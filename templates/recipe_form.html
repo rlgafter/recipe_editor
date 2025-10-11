@@ -162,7 +162,7 @@
                                    name="tags" 
                                    id="tags"
                                    placeholder="e.g., dessert, chocolate, quick"
-                                   value="{% if recipe %}{{ recipe.tags|select('not in', all_tags.keys())|join(', ') }}{% endif %}">
+                                   value="{% if recipe and new_tags %}{{ new_tags|join(', ') }}{% endif %}">
                         </div>
                         <div class="form-text">
                             Tags are case-insensitive and help organize your recipes

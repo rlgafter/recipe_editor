@@ -103,7 +103,7 @@ def recipe_new():
     if request.method == 'GET':
         # Get all tags for selection
         all_tags = storage.get_all_tags()
-        return render_template('recipe_form.html', recipe=None, all_tags=all_tags)
+        return render_template('recipe_form.html', recipe=None, all_tags=all_tags, new_tags=[])
     
     # POST - Create new recipe
     try:
@@ -115,7 +115,8 @@ def recipe_new():
             for error in errors:
                 flash(error, 'error')
             all_tags = storage.get_all_tags()
-            return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags), 400
+            new_tags = [tag for tag in recipe.tags if tag not in all_tags] if recipe.tags else []
+            return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, new_tags=new_tags), 400
         
         # Save recipe
         saved_recipe = storage.save_recipe(recipe)
@@ -128,7 +129,7 @@ def recipe_new():
         app.logger.error(f"Error creating recipe: {str(e)}")
         flash('Error creating recipe. Please try again.', 'error')
         all_tags = storage.get_all_tags()
-        return render_template('recipe_form.html', recipe=None, all_tags=all_tags), 500
+        return render_template('recipe_form.html', recipe=None, all_tags=all_tags, new_tags=[]), 500
 
 
 @app.route('/recipe/<recipe_id>/edit', methods=['GET', 'POST'])
@@ -142,7 +143,9 @@ def recipe_edit(recipe_id):
     
     if request.method == 'GET':
         all_tags = storage.get_all_tags()
-        return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags)
+        # Calculate tags that are not in the existing tags list (new tags)
+        new_tags = [tag for tag in recipe.tags if tag not in all_tags]
+        return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, new_tags=new_tags)
     
     # POST - Update recipe
     try:
@@ -158,7 +161,8 @@ def recipe_edit(recipe_id):
             for error in errors:
                 flash(error, 'error')
             all_tags = storage.get_all_tags()
-            return render_template('recipe_form.html', recipe=updated_recipe, all_tags=all_tags), 400
+            new_tags = [tag for tag in updated_recipe.tags if tag not in all_tags] if updated_recipe.tags else []
+            return render_template('recipe_form.html', recipe=updated_recipe, all_tags=all_tags, new_tags=new_tags), 400
         
         # Save recipe
         storage.save_recipe(updated_recipe)
@@ -171,7 +175,8 @@ def recipe_edit(recipe_id):
         app.logger.error(f"Error updating recipe {recipe_id}: {str(e)}")
         flash('Error updating recipe. Please try again.', 'error')
         all_tags = storage.get_all_tags()
-        return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags), 500
+        new_tags = [tag for tag in recipe.tags if tag not in all_tags] if recipe.tags else []
+        return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, new_tags=new_tags), 500
 
 
 @app.route('/recipe/<recipe_id>/delete', methods=['POST'])
