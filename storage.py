@@ -153,7 +153,7 @@ class StorageManager:
             
             # Add recipe to its current tags
             for tag_name in recipe.tags:
-                tag_name = tag_name.lower().strip()
+                tag_name = tag_name.upper().strip()
                 if tag_name:
                     if tag_name not in tags_data:
                         tag = Tag(tag_name)
@@ -178,7 +178,7 @@ class StorageManager:
                 tags_data = json.load(f)
             
             for tag_name in tag_names:
-                tag_name = tag_name.lower().strip()
+                tag_name = tag_name.upper().strip()
                 if tag_name in tags_data:
                     if recipe_id in tags_data[tag_name].get('recipes', []):
                         tags_data[tag_name]['recipes'].remove(recipe_id)
@@ -211,7 +211,7 @@ class StorageManager:
     
     def get_tag(self, tag_name: str) -> Optional[Tag]:
         """Get a specific tag by name."""
-        tag_name = tag_name.lower().strip()
+        tag_name = tag_name.upper().strip()
         tags = self.get_all_tags()
         return tags.get(tag_name)
     
@@ -220,8 +220,8 @@ class StorageManager:
         Update a tag's name. Only allowed if tag has no recipes.
         Returns (success, error_message)
         """
-        old_name = old_name.lower().strip()
-        new_name = new_name.lower().strip()
+        old_name = old_name.upper().strip()
+        new_name = new_name.upper().strip()
         
         if not new_name:
             return False, "Tag name cannot be empty"
@@ -260,7 +260,7 @@ class StorageManager:
         Delete a tag. Only allowed if tag has no recipes.
         Returns (success, error_message)
         """
-        tag_name = tag_name.lower().strip()
+        tag_name = tag_name.upper().strip()
         
         try:
             with open(config.TAGS_FILE, 'r') as f:
@@ -297,7 +297,7 @@ class StorageManager:
         if not tag_names:
             return self.get_all_recipes()
         
-        tag_names = [name.lower().strip() for name in tag_names]
+        tag_names = [name.upper().strip() for name in tag_names]
         all_recipes = self.get_all_recipes()
         
         if match_all:

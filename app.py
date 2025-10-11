@@ -264,7 +264,7 @@ def tag_manager():
         action = request.form.get('action')
         
         if action == 'create':
-            tag_name = request.form.get('tag_name', '').strip().lower()
+            tag_name = request.form.get('tag_name', '').strip().upper()
             if not tag_name:
                 flash('Tag name is required', 'error')
             else:
@@ -278,8 +278,8 @@ def tag_manager():
                     app.logger.info(f"Tag '{tag_name}' registered")
         
         elif action == 'edit':
-            old_name = request.form.get('old_name', '').strip().lower()
-            new_name = request.form.get('new_name', '').strip().lower()
+            old_name = request.form.get('old_name', '').strip().upper()
+            new_name = request.form.get('new_name', '').strip().upper()
             
             success, error_msg = storage.update_tag_name(old_name, new_name)
             if success:
@@ -288,7 +288,7 @@ def tag_manager():
                 flash(error_msg, 'error')
         
         elif action == 'delete':
-            tag_name = request.form.get('tag_name', '').strip().lower()
+            tag_name = request.form.get('tag_name', '').strip().upper()
             
             success, error_msg = storage.delete_tag(tag_name)
             if success:

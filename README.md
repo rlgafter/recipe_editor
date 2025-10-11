@@ -169,7 +169,7 @@ Tags help organize and categorize your recipes.
 5. **Delete a tag**: Click "Delete" (only available for tags with no recipes)
 
 **Tag Rules**:
-- Tag names are case-insensitive (stored as lowercase)
+- Tag names are case-insensitive (stored as uppercase)
 - Tags must be unique
 - Tags with associated recipes cannot be edited or deleted
 - Unused tags are automatically removed

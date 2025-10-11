@@ -68,7 +68,7 @@ class Recipe:
         self.ingredients = ingredients or []
         self.instructions = instructions.strip()
         self.notes = notes.strip()
-        self.tags = [tag.lower().strip() for tag in (tags or [])]
+        self.tags = [tag.upper().strip() for tag in (tags or [])]
         self.created_at = created_at or datetime.now().isoformat()
         self.updated_at = updated_at or datetime.now().isoformat()
         self.user_id = user_id
@@ -180,7 +180,7 @@ class Tag:
     """Represents a tag that can be associated with recipes."""
     
     def __init__(self, name: str, recipes: List[str] = None, created_at: Optional[str] = None):
-        self.name = name.lower().strip()
+        self.name = name.upper().strip()
         self.recipes = recipes or []
         self.created_at = created_at or datetime.now().isoformat()
     
