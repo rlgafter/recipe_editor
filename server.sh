@@ -1,0 +1,171 @@
+#!/bin/bash
+# Recipe Editor - Server Management Script
+# Usage: ./server.sh [start|stop|restart]
+# Default: restart
+
+set -e
+
+# Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="$SCRIPT_DIR/venv"
+PID_FILE="$SCRIPT_DIR/.server.pid"
+LOG_FILE="$SCRIPT_DIR/logs/server.log"
+ENV_FILE="$SCRIPT_DIR/.env"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Print colored message
+print_msg() {
+    echo -e "${2}${1}${NC}"
+}
+
+# Check if server is running
+is_running() {
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        if ps -p "$PID" > /dev/null 2>&1; then
+            return 0
+        else
+            # PID file exists but process is not running
+            rm -f "$PID_FILE"
+            return 1
+        fi
+    fi
+    return 1
+}
+
+# Start the server
+start_server() {
+    if is_running; then
+        print_msg "Server is already running (PID: $(cat $PID_FILE))" "$YELLOW"
+        return 1
+    fi
+
+    print_msg "Starting Recipe Editor server..." "$GREEN"
+
+    # Check if virtual environment exists
+    if [ ! -d "$VENV_DIR" ]; then
+        print_msg "Virtual environment not found. Creating one..." "$YELLOW"
+        python3 -m venv "$VENV_DIR"
+        print_msg "Virtual environment created." "$GREEN"
+    fi
+
+    # Activate virtual environment
+    print_msg "Activating virtual environment..." "$GREEN"
+    source "$VENV_DIR/bin/activate"
+
+    # Check if dependencies are installed
+    if ! python -c "import flask" 2>/dev/null; then
+        print_msg "Installing dependencies..." "$YELLOW"
+        pip install -q -r "$SCRIPT_DIR/requirements.txt"
+        print_msg "Dependencies installed." "$GREEN"
+    fi
+
+    # Source .env file if it exists
+    if [ -f "$ENV_FILE" ]; then
+        print_msg "Loading environment variables from .env..." "$GREEN"
+        set -a
+        source "$ENV_FILE"
+        set +a
+    fi
+
+    # Ensure logs directory exists
+    mkdir -p "$SCRIPT_DIR/logs"
+
+    # Start the server in background
+    cd "$SCRIPT_DIR"
+    nohup python app.py >> "$LOG_FILE" 2>&1 &
+    
+    # Save PID
+    echo $! > "$PID_FILE"
+    
+    # Wait a moment and check if it started successfully
+    sleep 2
+    if is_running; then
+        PID=$(cat "$PID_FILE")
+        print_msg "✓ Server started successfully (PID: $PID)" "$GREEN"
+        print_msg "Access the application at: http://localhost:5001" "$GREEN"
+        print_msg "Logs: $LOG_FILE" "$GREEN"
+    else
+        print_msg "✗ Failed to start server. Check logs: $LOG_FILE" "$RED"
+        return 1
+    fi
+}
+
+# Stop the server
+stop_server() {
+    if ! is_running; then
+        print_msg "Server is not running" "$YELLOW"
+        return 1
+    fi
+
+    PID=$(cat "$PID_FILE")
+    print_msg "Stopping server (PID: $PID)..." "$YELLOW"
+    
+    # Try graceful shutdown first
+    kill "$PID" 2>/dev/null || true
+    
+    # Wait for process to stop (max 10 seconds)
+    for i in {1..10}; do
+        if ! ps -p "$PID" > /dev/null 2>&1; then
+            print_msg "✓ Server stopped successfully" "$GREEN"
+            rm -f "$PID_FILE"
+            return 0
+        fi
+        sleep 1
+    done
+    
+    # Force kill if still running
+    print_msg "Force stopping server..." "$YELLOW"
+    kill -9 "$PID" 2>/dev/null || true
+    rm -f "$PID_FILE"
+    print_msg "✓ Server stopped" "$GREEN"
+}
+
+# Restart the server
+restart_server() {
+    print_msg "Restarting server..." "$YELLOW"
+    stop_server || true
+    sleep 1
+    start_server
+}
+
+# Show server status
+status_server() {
+    if is_running; then
+        PID=$(cat "$PID_FILE")
+        print_msg "Server is running (PID: $PID)" "$GREEN"
+        print_msg "Access: http://localhost:5001" "$GREEN"
+        print_msg "Logs: $LOG_FILE" "$GREEN"
+    else
+        print_msg "Server is not running" "$YELLOW"
+    fi
+}
+
+# Main script
+ACTION="${1:-restart}"
+
+case "$ACTION" in
+    start)
+        start_server
+        ;;
+    stop)
+        stop_server
+        ;;
+    restart)
+        restart_server
+        ;;
+    status)
+        status_server
+        ;;
+    *)
+        print_msg "Usage: $0 [start|stop|restart|status]" "$RED"
+        print_msg "Default: restart" "$YELLOW"
+        exit 1
+        ;;
+esac
+

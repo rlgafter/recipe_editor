@@ -42,6 +42,9 @@ instance/
 logs/
 *.log
 
+# Server PID file
+.server.pid
+
 # Environment Variables
 .env
 .env.local

@@ -192,7 +192,7 @@ import os
 SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 HOST = '0.0.0.0'
-PORT = 5000
+PORT = 5001
 
 # Storage Configuration
 DATA_DIR = 'data'

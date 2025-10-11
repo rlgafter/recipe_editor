@@ -106,7 +106,7 @@ export SENDER_NAME="Recipe Editor"
 export SECRET_KEY=your-secret-key-here
 export DEBUG=False
 export HOST=0.0.0.0
-export PORT=5000
+export PORT=5001
 
 # SMTP Settings (with TLS)
 export SMTP_USE_TLS=True
@@ -116,16 +116,24 @@ export SMTP_USE_TLS=True
 
 1. **Start the server**:
    ```bash
+   # Option 1: Use the server management script (recommended)
+   ./server.sh           # Default: restart server
+   ./server.sh start     # Start server in background
+   ./server.sh stop      # Stop server
+   ./server.sh status    # Check if running
+   
+   # Option 2: Run directly in foreground
    python app.py
    ```
 
 2. **Access the application**:
    - Open your web browser
-   - Navigate to: `http://localhost:5000`
+   - Navigate to: `http://localhost:5001`
    - You should see the Recipe Editor interface
 
 3. **Stop the server**:
-   - Press `Ctrl+C` in the terminal
+   - If using server.sh: `./server.sh stop`
+   - If running directly: Press `Ctrl+C` in the terminal
 
 ## Usage Guide
 
@@ -266,7 +274,7 @@ All configuration is done via environment variables or in `config.py`.
 | `SECRET_KEY` | Flask secret key for sessions | `dev-secret-key-change-in-production` |
 | `DEBUG` | Enable debug mode | `True` |
 | `HOST` | Server host | `0.0.0.0` |
-| `PORT` | Server port | `5000` |
+| `PORT` | Server port | `5001` |
 | `SMTP_SERVER` | SMTP server address | `smtp.gmail.com` |
 | `SMTP_PORT` | SMTP server port | `587` |
 | `SMTP_USERNAME` | SMTP username/email | ` ` |
@@ -321,7 +329,7 @@ cp -r data_backup_YYYYMMDD data
 - **Solution**: Install dependencies: `pip install -r requirements.txt`
 
 **Error**: `Address already in use`
-- **Solution**: Another application is using port 5000. Either:
+- **Solution**: Another application is using port 5001. Either:
   - Stop the other application
   - Change the port: `export PORT=8000`
 
