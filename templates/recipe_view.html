@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipe.name }} - Recipe Editor{% endblock %}
+
+{% block extra_head %}
+<style>
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        body {
+            font-size: 12pt;
+        }
+        h1 {
+            font-size: 24pt;
+        }
+        h2 {
+            font-size: 18pt;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <!-- Recipe Header -->
+                <h1 class="card-title mb-3">{{ recipe.name }}</h1>
+                
+                <!-- Tags -->
+                {% if recipe.tags %}
+                    <div class="mb-3">
+                        {% for tag in recipe.tags %}
+                            <span class="badge bg-primary me-1">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <!-- Action Buttons -->
+                <div class="btn-group mb-4 no-print" role="group">
+                    <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" class="btn btn-primary">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                    <button type="button" class="btn btn-info" onclick="window.print()">
+                        <i class="bi bi-printer"></i> Print
+                    </button>
+                    {% if email_configured %}
+                        <a href="{{ url_for('recipe_email', recipe_id=recipe.id) }}" class="btn btn-success">
+                            <i class="bi bi-envelope"></i> Email
+                        </a>
+                    {% endif %}
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                </div>
+                
+                <!-- Ingredients -->
+                <h2 class="mt-4 mb-3">
+                    <i class="bi bi-basket"></i> Ingredients
+                </h2>
+                <ul class="list-group list-group-flush mb-4">
+                    {% for ingredient in recipe.ingredients %}
+                        <li class="list-group-item">
+                            {% if ingredient.amount %}
+                                <strong>{{ ingredient.amount }}</strong>
+                            {% endif %}
+                            {% if ingredient.unit %}
+                                <span class="text-muted">{{ ingredient.unit }}</span>
+                            {% endif %}
+                            {{ ingredient.description }}
+                        </li>
+                    {% endfor %}
+                </ul>
+                
+                <!-- Instructions -->
+                {% if recipe.instructions %}
+                    <h2 class="mt-4 mb-3">
+                        <i class="bi bi-list-ol"></i> Instructions
+                    </h2>
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ recipe.instructions }}</pre>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <!-- Notes -->
+                {% if recipe.notes %}
+                    <h2 class="mt-4 mb-3">
+                        <i class="bi bi-sticky"></i> Notes
+                    </h2>
+                    <div class="card bg-warning bg-opacity-10 border-warning mb-4">
+                        <div class="card-body">
+                            <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ recipe.notes }}</pre>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <!-- Recipe Info -->
+                <div class="text-muted mt-4 no-print">
+                    <small>
+                        <i class="bi bi-calendar-plus"></i> Created: {{ recipe.created_at[:10] }}<br>
+                        <i class="bi bi-calendar-check"></i> Updated: {{ recipe.updated_at[:10] }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-3 no-print">
+            <a href="{{ url_for('recipe_list') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Recipes
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade no-print" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete the recipe "{{ recipe.name }}"? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('recipe_delete', recipe_id=recipe.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete Recipe</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

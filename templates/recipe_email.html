@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Email Recipe: {{ recipe.name }} - Recipe Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <h1 class="mb-4"><i class="bi bi-envelope"></i> Email Recipe</h1>
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h5 class="card-title">{{ recipe.name }}</h5>
+                <p class="text-muted">
+                    <small>
+                        <i class="bi bi-basket"></i> {{ recipe.ingredients|length }} ingredients
+                        {% if recipe.tags %}
+                            | 
+                            {% for tag in recipe.tags %}
+                                <span class="badge bg-primary">{{ tag }}</span>
+                            {% endfor %}
+                        {% endif %}
+                    </small>
+                </p>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Send Recipe</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="recipient_email" class="form-label">
+                            Recipient Email <span class="text-danger">*</span>
+                        </label>
+                        <input type="email" 
+                               class="form-control" 
+                               id="recipient_email" 
+                               name="recipient_email" 
+                               required
+                               placeholder="example@email.com">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="recipient_name" class="form-label">
+                            Recipient Name (Optional)
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="recipient_name" 
+                               name="recipient_name"
+                               placeholder="John Doe">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="message" class="form-label">
+                            Personal Message (Optional)
+                        </label>
+                        <textarea class="form-control" 
+                                  id="message" 
+                                  name="message" 
+                                  rows="4"
+                                  placeholder="Add a personal message to include with the recipe..."></textarea>
+                        <div class="form-text">
+                            This message will appear at the top of the email.
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        The recipe will be sent as a formatted HTML email with all ingredients, instructions, and notes.
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-send"></i> Send Email
+                        </button>
+                        <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}" 
+                           class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

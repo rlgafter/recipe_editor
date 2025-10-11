@@ -1,0 +1,23 @@
+# Recipe Editor - Python Dependencies
+
+# Flask Web Framework
+Flask==3.0.0
+
+# WSGI HTTP Server for production (optional)
+Werkzeug==3.0.1
+
+# Template engine (included with Flask)
+Jinja2==3.1.2
+
+# URL routing (included with Flask)
+itsdangerous==2.1.2
+
+# Secure cookies (included with Flask)
+click==8.1.7
+
+# HTML/XML parsing (if needed in future)
+MarkupSafe==2.1.3
+
+# For development/testing (optional)
+# python-dotenv==1.0.0  # Uncomment to use .env files for configuration
+
