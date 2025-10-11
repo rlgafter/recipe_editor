@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}{% if recipe %}Edit {{ recipe.name }}{% else %}New Recipe{% endif %} - Recipe Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <h1 class="mb-4">
+            {% if recipe %}
+                <i class="bi bi-pencil"></i> Edit Recipe
+            {% else %}
+                <i class="bi bi-plus-circle"></i> New Recipe
+            {% endif %}
+        </h1>
+        
+        <form method="POST" id="recipeForm">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <!-- Recipe Name -->
+                    <div class="mb-3">
+                        <label for="name" class="form-label">
+                            Recipe Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="name" 
+                               name="name" 
+                               value="{% if recipe %}{{ recipe.name }}{% endif %}"
+                               required
+                               maxlength="200">
+                    </div>
+                    
+                    <!-- Ingredients -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Ingredients <span class="text-danger">*</span>
+                            <small class="text-muted">(at least one required)</small>
+                        </label>
+                        <div id="ingredientsList">
+                            {% if recipe and recipe.ingredients %}
+                                {% for ingredient in recipe.ingredients %}
+                                    <div class="ingredient-row mb-2">
+                                        <div class="row g-2">
+                                            <div class="col-md-2">
+                                                <input type="text" 
+                                                       class="form-control form-control-sm" 
+                                                       name="ingredient_amount_{{ loop.index0 }}" 
+                                                       placeholder="Amount"
+                                                       value="{{ ingredient.amount }}">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <input type="text" 
+                                                       class="form-control form-control-sm" 
+                                                       name="ingredient_unit_{{ loop.index0 }}" 
+                                                       placeholder="Unit"
+                                                       value="{{ ingredient.unit }}">
+                                            </div>
+                                            <div class="col-md-7">
+                                                <input type="text" 
+                                                       class="form-control form-control-sm" 
+                                                       name="ingredient_description_{{ loop.index0 }}" 
+                                                       placeholder="Ingredient description *"
+                                                       value="{{ ingredient.description }}"
+                                                       required>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <button type="button" class="btn btn-sm btn-danger remove-ingredient" onclick="removeIngredient(this)">
+                                                    <i class="bi bi-x"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <!-- Default first ingredient -->
+                                <div class="ingredient-row mb-2">
+                                    <div class="row g-2">
+                                        <div class="col-md-2">
+                                            <input type="text" 
+                                                   class="form-control form-control-sm" 
+                                                   name="ingredient_amount_0" 
+                                                   placeholder="Amount">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="text" 
+                                                   class="form-control form-control-sm" 
+                                                   name="ingredient_unit_0" 
+                                                   placeholder="Unit">
+                                        </div>
+                                        <div class="col-md-7">
+                                            <input type="text" 
+                                                   class="form-control form-control-sm" 
+                                                   name="ingredient_description_0" 
+                                                   placeholder="Ingredient description *"
+                                                   required>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <button type="button" class="btn btn-sm btn-danger remove-ingredient" onclick="removeIngredient(this)">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success mt-2" onclick="addIngredient()">
+                            <i class="bi bi-plus"></i> Add Ingredient
+                        </button>
+                        <div class="form-text">
+                            <small>Amount examples: 1, 1/2, 2.5, 1 1/2 (range: 0-1000)</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Instructions -->
+                    <div class="mb-3">
+                        <label for="instructions" class="form-label">Instructions</label>
+                        <textarea class="form-control" 
+                                  id="instructions" 
+                                  name="instructions" 
+                                  rows="8"
+                                  placeholder="Enter step-by-step instructions...">{% if recipe %}{{ recipe.instructions }}{% endif %}</textarea>
+                    </div>
+                    
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" 
+                                  id="notes" 
+                                  name="notes" 
+                                  rows="4"
+                                  placeholder="Any additional notes or tips...">{% if recipe %}{{ recipe.notes }}{% endif %}</textarea>
+                    </div>
+                    
+                    <!-- Tags -->
+                    <div class="mb-3">
+                        <label class="form-label">Tags</label>
+                        
+                        {% if all_tags %}
+                            <div class="mb-2">
+                                <small class="text-muted">Select existing tags:</small>
+                                <div class="mt-2">
+                                    {% for tag_name, tag in all_tags.items()|sort %}
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   name="tag_{{ tag_name }}" 
+                                                   id="tag_{{ tag_name }}"
+                                                   {% if recipe and tag_name in recipe.tags %}checked{% endif %}>
+                                            <label class="form-check-label" for="tag_{{ tag_name }}">
+                                                {{ tag_name }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        <div>
+                            <small class="text-muted">Or enter new tags (comma-separated):</small>
+                            <input type="text" 
+                                   class="form-control mt-1" 
+                                   name="tags" 
+                                   id="tags"
+                                   placeholder="e.g., dessert, chocolate, quick"
+                                   value="{% if recipe %}{{ recipe.tags|select('not in', all_tags.keys())|join(', ') }}{% endif %}">
+                        </div>
+                        <div class="form-text">
+                            Tags are case-insensitive and help organize your recipes
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Form Actions -->
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> 
+                    {% if recipe %}Update Recipe{% else %}Create Recipe{% endif %}
+                </button>
+                <a href="{% if recipe %}{{ url_for('recipe_view', recipe_id=recipe.id) }}{% else %}{{ url_for('recipe_list') }}{% endif %}" 
+                   class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let ingredientIndex = {{ recipe.ingredients|length if recipe else 1 }};
+
+function addIngredient() {
+    const ingredientsList = document.getElementById('ingredientsList');
+    const newRow = document.createElement('div');
+    newRow.className = 'ingredient-row mb-2';
+    newRow.innerHTML = `
+        <div class="row g-2">
+            <div class="col-md-2">
+                <input type="text" 
+                       class="form-control form-control-sm" 
+                       name="ingredient_amount_${ingredientIndex}" 
+                       placeholder="Amount">
+            </div>
+            <div class="col-md-2">
+                <input type="text" 
+                       class="form-control form-control-sm" 
+                       name="ingredient_unit_${ingredientIndex}" 
+                       placeholder="Unit">
+            </div>
+            <div class="col-md-7">
+                <input type="text" 
+                       class="form-control form-control-sm" 
+                       name="ingredient_description_${ingredientIndex}" 
+                       placeholder="Ingredient description *"
+                       required>
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-danger remove-ingredient" onclick="removeIngredient(this)">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    ingredientsList.appendChild(newRow);
+    ingredientIndex++;
+}
+
+function removeIngredient(button) {
+    const ingredientsList = document.getElementById('ingredientsList');
+    const ingredientRows = ingredientsList.getElementsByClassName('ingredient-row');
+    
+    // Keep at least one ingredient row
+    if (ingredientRows.length > 1) {
+        button.closest('.ingredient-row').remove();
+    } else {
+        alert('You must have at least one ingredient.');
+    }
+}
+</script>
+{% endblock %}
+
