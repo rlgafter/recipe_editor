@@ -33,6 +33,31 @@
                 <!-- Recipe Header -->
                 <h1 class="card-title mb-3">{{ recipe.name }}</h1>
                 
+                <!-- Source Information -->
+                {% if recipe.source and recipe.source.name %}
+                    <div class="alert alert-info mb-3">
+                        <h6 class="mb-2">
+                            <i class="bi bi-book"></i> Source
+                        </h6>
+                        <div class="source-info">
+                            <strong>{{ recipe.source.name }}</strong>
+                            {% if recipe.source.author %}
+                                <span class="text-muted">({{ recipe.source.author }})</span>
+                            {% endif %}
+                            {% if recipe.source.issue %}
+                                <span class="text-muted">- {{ recipe.source.issue }}</span>
+                            {% endif %}
+                            {% if recipe.source.url %}
+                                <br>
+                                <a href="{{ recipe.source.url }}" target="_blank" class="no-print">
+                                    <i class="bi bi-link-45deg"></i> {{ recipe.source.url }}
+                                </a>
+                                <span class="d-none d-print-inline">{{ recipe.source.url }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+                
                 <!-- Tags -->
                 {% if recipe.tags %}
                     <div class="mb-3">

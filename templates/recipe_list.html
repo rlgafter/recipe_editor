@@ -93,6 +93,14 @@
                                     </a>
                                 </h5>
                                 
+                                {% if recipe.source and recipe.source.name %}
+                                    <p class="card-text mb-1">
+                                        <small class="text-muted">
+                                            <i class="bi bi-book"></i> {{ recipe.source.name }}
+                                        </small>
+                                    </p>
+                                {% endif %}
+                                
                                 <p class="card-text">
                                     <small class="text-muted">
                                         <i class="bi bi-basket"></i> {{ recipe.ingredients|length }} ingredient{{ 's' if recipe.ingredients|length != 1 else '' }}

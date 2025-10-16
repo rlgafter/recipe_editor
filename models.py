@@ -61,7 +61,8 @@ class Recipe:
         updated_at: Optional[str] = None,
         user_id: Optional[str] = None,
         rating: Optional[float] = None,
-        favorites: List[str] = None
+        favorites: List[str] = None,
+        source: Optional[Dict[str, str]] = None
     ):
         self.id = recipe_id
         self.name = name.strip()
@@ -74,6 +75,13 @@ class Recipe:
         self.user_id = user_id
         self.rating = rating
         self.favorites = favorites or []
+        # Source information (required)
+        self.source = source or {
+            'name': '',
+            'url': '',
+            'author': '',
+            'issue': ''
+        }
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert recipe to dictionary format for JSON storage."""
@@ -88,7 +96,8 @@ class Recipe:
             "updated_at": self.updated_at,
             "user_id": self.user_id,
             "rating": self.rating,
-            "favorites": self.favorites
+            "favorites": self.favorites,
+            "source": self.source
         }
     
     @classmethod
@@ -108,7 +117,13 @@ class Recipe:
             updated_at=data.get("updated_at"),
             user_id=data.get("user_id"),
             rating=data.get("rating"),
-            favorites=data.get("favorites", [])
+            favorites=data.get("favorites", []),
+            source=data.get("source", {
+                'name': '',
+                'url': '',
+                'author': '',
+                'issue': ''
+            })
         )
     
     def validate(self) -> tuple[bool, List[str]]:
@@ -132,6 +147,15 @@ class Recipe:
         for i, ing in enumerate(self.ingredients):
             if ing.amount and not self._is_valid_amount(ing.amount):
                 errors.append(f"Ingredient {i+1}: Invalid amount '{ing.amount}'. Use numbers or fractions (e.g., 1/2, 2.5)")
+        
+        # Validate source information
+        if not self.source or not self.source.get('name', '').strip():
+            errors.append("Source name is required")
+        
+        # Validate URL if provided
+        source_url = self.source.get('url', '').strip() if self.source else ''
+        if source_url and not self._is_valid_url(source_url):
+            errors.append("Source URL must be a valid URL (starting with http:// or https://)")
         
         return len(errors) == 0, errors
     
@@ -170,6 +194,16 @@ class Recipe:
             return 0 <= value <= 1000
         
         return False
+    
+    @staticmethod
+    def _is_valid_url(url: str) -> bool:
+        """Validate URL format."""
+        url = url.strip()
+        if not url:
+            return True
+        
+        # Check if URL starts with http:// or https://
+        return url.startswith('http://') or url.startswith('https://')
     
     def update_timestamp(self):
         """Update the updated_at timestamp to current time."""
