@@ -23,5 +23,11 @@
   "updated_at": "2025-10-11T12:15:31.992555",
   "user_id": null,
   "rating": null,
-  "favorites": []
+  "favorites": [],
+  "source": {
+    "name": "Ricki",
+    "url": "",
+    "author": "",
+    "issue": ""
+  }
 }

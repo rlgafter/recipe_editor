@@ -78,6 +78,20 @@ pre {
     color: inherit;
 }
 
+/* Source Information */
+.source-info {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.source-info a {
+    word-break: break-all;
+}
+
+.bg-light.source-section {
+    border-left: 4px solid var(--info-color);
+}
+
 /* Tag Filter Sidebar */
 .form-check-label {
     cursor: pointer;
@@ -93,9 +107,15 @@ pre {
     .footer,
     .no-print,
     .btn,
-    .alert,
     .modal {
         display: none !important;
+    }
+    
+    .alert {
+        background: transparent !important;
+        border: 1px solid #000 !important;
+        padding: 0.5rem !important;
+        page-break-inside: avoid;
     }
     
     .card {

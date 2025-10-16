@@ -97,11 +97,31 @@ class EmailService:
                     color: #7f8c8d;
                     text-align: center;
                 }}
+                .source {{
+                    background-color: #e8f4f8;
+                    padding: 12px;
+                    border-left: 4px solid #3498db;
+                    margin-bottom: 20px;
+                    font-size: 0.95em;
+                }}
             </style>
         </head>
         <body>
             <h1>{recipe.name}</h1>
         """
+        
+        # Source information
+        if recipe.source and recipe.source.get('name'):
+            html += '<div class="source">'
+            html += '<strong>Source:</strong> '
+            html += recipe.source['name']
+            if recipe.source.get('author'):
+                html += f" ({recipe.source['author']})"
+            if recipe.source.get('issue'):
+                html += f" - {recipe.source['issue']}"
+            if recipe.source.get('url'):
+                html += f'<br><a href="{recipe.source["url"]}">{recipe.source["url"]}</a>'
+            html += '</div>'
         
         if custom_message:
             html += f"""
@@ -232,6 +252,17 @@ class EmailService:
     def _format_recipe_text(self, recipe: Recipe, custom_message: str = "") -> str:
         """Format recipe as plain text for email fallback."""
         text = f"{recipe.name}\n{'=' * len(recipe.name)}\n\n"
+        
+        # Source information
+        if recipe.source and recipe.source.get('name'):
+            text += f"Source: {recipe.source['name']}"
+            if recipe.source.get('author'):
+                text += f" ({recipe.source['author']})"
+            if recipe.source.get('issue'):
+                text += f" - {recipe.source['issue']}"
+            if recipe.source.get('url'):
+                text += f"\n{recipe.source['url']}"
+            text += "\n\n"
         
         if custom_message:
             text += f"{custom_message}\n\n"

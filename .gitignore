@@ -58,3 +58,8 @@ htmlcov/
 *.tmp
 *.bak
 .cache/
+.*.pid
+tmp
+
+# Server files
+.server.pid

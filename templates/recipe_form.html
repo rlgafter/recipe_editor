@@ -30,6 +30,75 @@
                                maxlength="200">
                     </div>
                     
+                    <!-- Source Information -->
+                    <div class="mb-4 p-3 bg-light rounded">
+                        <h5 class="mb-3">
+                            <i class="bi bi-book"></i> Source Information
+                        </h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="source_name" class="form-label">
+                                    Source Name <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="source_name" 
+                                       name="source_name" 
+                                       value="{% if recipe and recipe.source %}{{ recipe.source.name }}{% endif %}"
+                                       required
+                                       maxlength="200"
+                                       placeholder="e.g., Ricki, Mom's Cookbook">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="source_author" class="form-label">
+                                    Author
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="source_author" 
+                                       name="source_author" 
+                                       value="{% if recipe and recipe.source %}{{ recipe.source.author }}{% endif %}"
+                                       maxlength="200"
+                                       placeholder="e.g., Jane Smith (optional)">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="source_url" class="form-label">
+                                    URL
+                                </label>
+                                <input type="url" 
+                                       class="form-control" 
+                                       id="source_url" 
+                                       name="source_url" 
+                                       value="{% if recipe and recipe.source %}{{ recipe.source.url }}{% endif %}"
+                                       placeholder="https://example.com (optional)">
+                                <div class="form-text">
+                                    <small>Must start with http:// or https://</small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="source_issue" class="form-label">
+                                    Issue/Edition
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="source_issue" 
+                                       name="source_issue" 
+                                       value="{% if recipe and recipe.source %}{{ recipe.source.issue }}{% endif %}"
+                                       maxlength="100"
+                                       placeholder="e.g., Fall 2024, Issue 42 (optional)">
+                                <div class="form-text">
+                                    <small>For magazines or periodic publications</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Ingredients -->
                     <div class="mb-3">
                         <label class="form-label">

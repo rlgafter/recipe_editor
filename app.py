@@ -316,6 +316,14 @@ def _parse_recipe_form(form_data, recipe_id=None):
     instructions = form_data.get('instructions', '').strip()
     notes = form_data.get('notes', '').strip()
     
+    # Parse source information
+    source = {
+        'name': form_data.get('source_name', '').strip(),
+        'url': form_data.get('source_url', '').strip(),
+        'author': form_data.get('source_author', '').strip(),
+        'issue': form_data.get('source_issue', '').strip()
+    }
+    
     # Parse ingredients
     ingredients = []
     ingredient_count = 0
@@ -355,7 +363,8 @@ def _parse_recipe_form(form_data, recipe_id=None):
         instructions=instructions,
         notes=notes,
         tags=tags,
-        recipe_id=recipe_id
+        recipe_id=recipe_id,
+        source=source
     )
     
     return recipe
