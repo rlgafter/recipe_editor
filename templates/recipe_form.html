@@ -13,6 +13,60 @@
             {% endif %}
         </h1>
         
+        {% if not recipe and gemini_configured %}
+        <!-- Recipe Import Section -->
+        <div class="card shadow-sm mb-4" id="importSection">
+            <div class="card-body">
+                <h5 class="mb-3">
+                    <i class="bi bi-cloud-download"></i> Import Recipe
+                </h5>
+                <p class="text-muted">Drag and drop a file, paste a URL, or upload a file to import a recipe automatically.</p>
+                
+                <!-- URL Import -->
+                <div class="mb-3">
+                    <label for="importUrl" class="form-label">Import from URL</label>
+                    <div class="input-group">
+                        <input type="url" 
+                               class="form-control" 
+                               id="importUrl" 
+                               placeholder="https://example.com/recipe">
+                        <button type="button" class="btn btn-primary" id="importUrlBtn">
+                            <i class="bi bi-link"></i> Import
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- File Upload / Drag & Drop -->
+                <div class="mb-3">
+                    <label class="form-label">Import from File (Text or PDF)</label>
+                    <div id="dropZone" class="border border-2 border-dashed rounded p-4 text-center" 
+                         style="cursor: pointer; background-color: #f8f9fa;">
+                        <i class="bi bi-cloud-upload fs-1 text-muted"></i>
+                        <p class="mb-2"><strong>Drag and drop a file here</strong></p>
+                        <p class="text-muted small mb-2">or</p>
+                        <button type="button" class="btn btn-outline-primary" id="selectFileBtn">
+                            <i class="bi bi-file-earmark-text"></i> Select File
+                        </button>
+                        <input type="file" id="importFile" class="d-none" accept=".txt,.text,.pdf">
+                        <p class="text-muted small mt-2 mb-0">Supported: .txt, .pdf</p>
+                    </div>
+                </div>
+                
+                <!-- Import Status -->
+                <div id="importStatus" class="d-none">
+                    <div class="alert alert-info" role="alert">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-2" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span id="importStatusText">Importing recipe...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
         <form method="POST" id="recipeForm">
             <div class="card shadow-sm">
                 <div class="card-body">
@@ -307,6 +361,288 @@ function removeIngredient(button) {
         alert('You must have at least one ingredient.');
     }
 }
+
+{% if not recipe and gemini_configured %}
+// ============================================================================
+// Recipe Import Functionality
+// ============================================================================
+
+// Drag and drop functionality
+const dropZone = document.getElementById('dropZone');
+const importFile = document.getElementById('importFile');
+const selectFileBtn = document.getElementById('selectFileBtn');
+const importUrlBtn = document.getElementById('importUrlBtn');
+const importUrl = document.getElementById('importUrl');
+
+// Prevent default drag behaviors
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, preventDefaults, false);
+    document.body.addEventListener(eventName, preventDefaults, false);
+});
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+// Highlight drop zone when item is dragged over it
+['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, highlight, false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, unhighlight, false);
+});
+
+function highlight(e) {
+    dropZone.classList.add('border-primary');
+    dropZone.style.backgroundColor = '#e7f3ff';
+}
+
+function unhighlight(e) {
+    dropZone.classList.remove('border-primary');
+    dropZone.style.backgroundColor = '#f8f9fa';
+}
+
+// Handle dropped files
+dropZone.addEventListener('drop', handleDrop, false);
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    
+    if (files.length > 0) {
+        handleFile(files[0]);
+    } else {
+        // Check if URL was dropped
+        const url = dt.getData('text/plain');
+        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            importUrl.value = url;
+            importFromUrl();
+        }
+    }
+}
+
+// Handle file selection via button
+selectFileBtn.addEventListener('click', () => {
+    importFile.click();
+});
+
+dropZone.addEventListener('click', (e) => {
+    if (e.target === dropZone || e.target.closest('#selectFileBtn') === null) {
+        importFile.click();
+    }
+});
+
+importFile.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+    }
+});
+
+// Handle URL import
+importUrlBtn.addEventListener('click', importFromUrl);
+importUrl.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        importFromUrl();
+    }
+});
+
+function handleFile(file) {
+    // Check file type
+    const validExtensions = ['.txt', '.text', '.pdf'];
+    const fileName = file.name.toLowerCase();
+    const isValid = validExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!isValid) {
+        showImportError('Please select a .txt or .pdf file');
+        return;
+    }
+    
+    // Upload file
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    showImportStatus('Importing recipe from file...');
+    
+    fetch('/api/recipe/import/file', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            populateForm(data.recipe);
+            showImportSuccess('Recipe imported successfully!');
+        } else {
+            showImportError(data.error || 'Failed to import recipe');
+        }
+    })
+    .catch(error => {
+        showImportError('Error importing recipe: ' + error.message);
+    });
+}
+
+function importFromUrl() {
+    const url = importUrl.value.trim();
+    
+    if (!url) {
+        alert('Please enter a URL');
+        return;
+    }
+    
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        alert('Please enter a valid URL starting with http:// or https://');
+        return;
+    }
+    
+    showImportStatus('Importing recipe from URL...');
+    
+    fetch('/api/recipe/import/url', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url: url })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            populateForm(data.recipe);
+            showImportSuccess('Recipe imported successfully!');
+        } else {
+            showImportError(data.error || 'Failed to import recipe');
+        }
+    })
+    .catch(error => {
+        showImportError('Error importing recipe: ' + error.message);
+    });
+}
+
+function populateForm(recipeData) {
+    // Populate recipe name
+    if (recipeData.name) {
+        document.getElementById('name').value = recipeData.name;
+    }
+    
+    // Populate source information
+    if (recipeData.source) {
+        if (recipeData.source.name) {
+            document.getElementById('source_name').value = recipeData.source.name;
+        }
+        if (recipeData.source.url) {
+            document.getElementById('source_url').value = recipeData.source.url;
+        }
+        if (recipeData.source.author) {
+            document.getElementById('source_author').value = recipeData.source.author;
+        }
+        if (recipeData.source.issue) {
+            document.getElementById('source_issue').value = recipeData.source.issue;
+        }
+    }
+    
+    // Populate ingredients
+    if (recipeData.ingredients && recipeData.ingredients.length > 0) {
+        const ingredientsList = document.getElementById('ingredientsList');
+        ingredientsList.innerHTML = ''; // Clear existing
+        ingredientIndex = 0;
+        
+        recipeData.ingredients.forEach((ingredient, index) => {
+            const newRow = document.createElement('div');
+            newRow.className = 'ingredient-row mb-2';
+            newRow.innerHTML = `
+                <div class="row g-2">
+                    <div class="col-md-2">
+                        <input type="text" 
+                               class="form-control form-control-sm" 
+                               name="ingredient_amount_${index}" 
+                               placeholder="Amount"
+                               value="${ingredient.amount || ''}">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" 
+                               class="form-control form-control-sm" 
+                               name="ingredient_unit_${index}" 
+                               placeholder="Unit"
+                               value="${ingredient.unit || ''}">
+                    </div>
+                    <div class="col-md-7">
+                        <input type="text" 
+                               class="form-control form-control-sm" 
+                               name="ingredient_description_${index}" 
+                               placeholder="Ingredient description *"
+                               value="${ingredient.description || ''}"
+                               required>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-sm btn-danger remove-ingredient" onclick="removeIngredient(this)">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            ingredientsList.appendChild(newRow);
+            ingredientIndex++;
+        });
+    }
+    
+    // Populate instructions
+    if (recipeData.instructions) {
+        document.getElementById('instructions').value = recipeData.instructions;
+    }
+    
+    // Populate notes
+    if (recipeData.notes) {
+        document.getElementById('notes').value = recipeData.notes;
+    }
+    
+    // Populate tags
+    if (recipeData.tags && recipeData.tags.length > 0) {
+        document.getElementById('tags').value = recipeData.tags.join(', ');
+    }
+    
+    // Scroll to form
+    document.getElementById('recipeForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+function showImportStatus(message) {
+    const status = document.getElementById('importStatus');
+    const statusText = document.getElementById('importStatusText');
+    statusText.textContent = message;
+    status.classList.remove('d-none');
+    status.querySelector('.alert').className = 'alert alert-info';
+    status.querySelector('.spinner-border').classList.remove('d-none');
+}
+
+function showImportSuccess(message) {
+    const status = document.getElementById('importStatus');
+    const statusText = document.getElementById('importStatusText');
+    statusText.textContent = message;
+    status.classList.remove('d-none');
+    status.querySelector('.alert').className = 'alert alert-success';
+    status.querySelector('.spinner-border').classList.add('d-none');
+    
+    // Hide after 3 seconds
+    setTimeout(() => {
+        status.classList.add('d-none');
+    }, 3000);
+}
+
+function showImportError(message) {
+    const status = document.getElementById('importStatus');
+    const statusText = document.getElementById('importStatusText');
+    statusText.textContent = message;
+    status.classList.remove('d-none');
+    status.querySelector('.alert').className = 'alert alert-danger';
+    status.querySelector('.spinner-border').classList.add('d-none');
+    
+    // Hide after 5 seconds
+    setTimeout(() => {
+        status.classList.add('d-none');
+    }, 5000);
+}
+{% endif %}
 </script>
 {% endblock %}
 

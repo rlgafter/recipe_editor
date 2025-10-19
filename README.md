@@ -5,6 +5,7 @@ A web-based recipe management application built with Python Flask. Create, edit,
 ## Features
 
 - 📝 **Recipe Management**: Create, edit, view, and delete recipes
+- 🤖 **AI-Powered Import**: Import recipes from URLs, text files, or PDFs using Google Gemini AI
 - 🏷️ **Tag System**: Organize recipes with custom tags
 - 🔍 **Smart Filtering**: Filter recipes by single or multiple tags
 - 📧 **Email Sharing**: Send beautifully formatted recipes via email
@@ -20,6 +21,7 @@ A web-based recipe management application built with Python Flask. Create, edit,
   - [Configuration](#configuration)
   - [Running the Application](#running-the-application)
 - [Usage Guide](#usage-guide)
+  - [Importing Recipes (AI-Powered)](#importing-recipes-ai-powered)
   - [Creating Recipes](#creating-recipes)
   - [Managing Tags](#managing-tags)
   - [Filtering Recipes](#filtering-recipes)
@@ -75,6 +77,17 @@ The application uses environment variables for configuration. You can set these 
 
 No configuration is needed for basic usage. The app will run with default settings.
 
+#### Recipe Import Configuration (Optional)
+
+To enable AI-powered recipe import, configure Google Gemini API:
+
+```bash
+# Get your API key from https://ai.google.dev/
+export GOOGLE_GEMINI_API_KEY=your_api_key_here
+```
+
+See [IMPORT_FEATURE.md](IMPORT_FEATURE.md) for detailed setup instructions.
+
 #### Email Configuration (Optional)
 
 To enable email functionality, configure SMTP settings:
@@ -128,6 +141,46 @@ export SMTP_USE_TLS=True
    - Press `Ctrl+C` in the terminal
 
 ## Usage Guide
+
+### Importing Recipes (AI-Powered)
+
+> **Note**: Recipe import requires a Google Gemini API key (see [Configuration](#configuration))
+
+The Recipe Editor can automatically extract recipes from websites, text files, and PDFs using AI.
+
+#### Import from URL
+
+1. Click **"New Recipe"** in the navigation bar
+2. In the "Import Recipe" section, enter a recipe URL
+3. Click **"Import"**
+4. The recipe is automatically extracted and populated in the form
+5. Review and edit as needed, then click **"Create Recipe"**
+
+**Example URLs**:
+- `https://www.allrecipes.com/recipe/10813/best-chocolate-chip-cookies/`
+- Any recipe blog or website
+
+#### Import from File
+
+1. Click **"New Recipe"**
+2. **Drag and drop** a text or PDF file onto the drop zone, OR
+3. Click **"Select File"** to browse for a file
+4. The recipe is automatically extracted and populated
+5. Review and edit as needed, then click **"Create Recipe"**
+
+**Supported formats**: `.txt`, `.pdf`
+
+#### What Gets Extracted
+
+The AI automatically extracts:
+- Recipe name
+- Ingredients (amounts, units, descriptions)
+- Instructions
+- Notes and tips
+- Tags (e.g., DESSERT, VEGETARIAN)
+- Source attribution (URL, author, publication)
+
+For detailed documentation, see [IMPORT_FEATURE.md](IMPORT_FEATURE.md).
 
 ### Creating Recipes
 
@@ -224,9 +277,11 @@ recipe_editor/
 ├── storage.py                # JSON storage management
 ├── config.py                 # Configuration settings
 ├── email_service.py          # Email functionality
+├── gemini_service.py         # AI-powered recipe extraction
 ├── requirements.txt          # Python dependencies
 ├── README.md                 # This file
 ├── DESIGN.md                 # Design documentation
+├── IMPORT_FEATURE.md         # Recipe import documentation
 │
 ├── templates/                # HTML templates (Jinja2)
 │   ├── base.html            # Base template with navigation
@@ -274,6 +329,7 @@ All configuration is done via environment variables or in `config.py`.
 | `SMTP_USE_TLS` | Use TLS encryption | `True` |
 | `SENDER_EMAIL` | From email address | Same as `SMTP_USERNAME` |
 | `SENDER_NAME` | From name | `Recipe Editor` |
+| `GOOGLE_GEMINI_API_KEY` | Google Gemini API key for recipe import | ` ` |
 
 ### Setting Environment Variables
 
@@ -354,6 +410,17 @@ cp -r data_backup_YYYYMMDD data
 2. Verify the file contains valid JSON
 3. Check logs for errors
 
+### Recipe import not working
+
+**Error**: `Gemini API is not configured`
+- **Solution**: Set `GOOGLE_GEMINI_API_KEY` environment variable (see [IMPORT_FEATURE.md](IMPORT_FEATURE.md))
+
+**Error**: `Could not extract recipe`
+- **Solution**: 
+  - Ensure the content contains a clear recipe format
+  - Try a different source or file
+  - For PDFs, ensure they contain text (not just images)
+
 ### Performance issues
 
 If you have many recipes (>1000):
@@ -399,6 +466,7 @@ The following features are planned for future releases:
 - **Nutrition Info**: Calorie and nutrition tracking
 - **Shopping Lists**: Generate ingredient lists
 - **Database Backend**: SQLite/PostgreSQL for better performance
+- **Enhanced Import**: Image recognition (OCR) for scanned recipes, batch imports
 
 See [DESIGN.md](DESIGN.md) for detailed design documentation and future planning.
 

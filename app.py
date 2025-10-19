@@ -9,6 +9,7 @@ import config
 from models import Recipe, Ingredient
 from storage import storage
 from email_service import email_service
+from gemini_service import gemini_service
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -103,7 +104,9 @@ def recipe_new():
     if request.method == 'GET':
         # Get all tags for selection
         all_tags = storage.get_all_tags()
-        return render_template('recipe_form.html', recipe=None, all_tags=all_tags, new_tags=[])
+        # Check if Gemini is configured
+        gemini_configured = gemini_service.is_configured()
+        return render_template('recipe_form.html', recipe=None, all_tags=all_tags, new_tags=[], gemini_configured=gemini_configured)
     
     # POST - Create new recipe
     try:
@@ -116,7 +119,8 @@ def recipe_new():
                 flash(error, 'error')
             all_tags = storage.get_all_tags()
             new_tags = [tag for tag in recipe.tags if tag not in all_tags] if recipe.tags else []
-            return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, new_tags=new_tags), 400
+            gemini_configured = gemini_service.is_configured()
+            return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, new_tags=new_tags, gemini_configured=gemini_configured), 400
         
         # Save recipe
         saved_recipe = storage.save_recipe(recipe)
@@ -129,7 +133,8 @@ def recipe_new():
         app.logger.error(f"Error creating recipe: {str(e)}")
         flash('Error creating recipe. Please try again.', 'error')
         all_tags = storage.get_all_tags()
-        return render_template('recipe_form.html', recipe=None, all_tags=all_tags, new_tags=[]), 500
+        gemini_configured = gemini_service.is_configured()
+        return render_template('recipe_form.html', recipe=None, all_tags=all_tags, new_tags=[], gemini_configured=gemini_configured), 500
 
 
 @app.route('/recipe/<recipe_id>/edit', methods=['GET', 'POST'])
@@ -145,7 +150,8 @@ def recipe_edit(recipe_id):
         all_tags = storage.get_all_tags()
         # Calculate tags that are not in the existing tags list (new tags)
         new_tags = [tag for tag in recipe.tags if tag not in all_tags]
-        return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, new_tags=new_tags)
+        gemini_configured = gemini_service.is_configured()
+        return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, new_tags=new_tags, gemini_configured=gemini_configured)
     
     # POST - Update recipe
     try:
@@ -162,7 +168,8 @@ def recipe_edit(recipe_id):
                 flash(error, 'error')
             all_tags = storage.get_all_tags()
             new_tags = [tag for tag in updated_recipe.tags if tag not in all_tags] if updated_recipe.tags else []
-            return render_template('recipe_form.html', recipe=updated_recipe, all_tags=all_tags, new_tags=new_tags), 400
+            gemini_configured = gemini_service.is_configured()
+            return render_template('recipe_form.html', recipe=updated_recipe, all_tags=all_tags, new_tags=new_tags, gemini_configured=gemini_configured), 400
         
         # Save recipe
         storage.save_recipe(updated_recipe)
@@ -176,7 +183,8 @@ def recipe_edit(recipe_id):
         flash('Error updating recipe. Please try again.', 'error')
         all_tags = storage.get_all_tags()
         new_tags = [tag for tag in recipe.tags if tag not in all_tags] if recipe.tags else []
-        return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, new_tags=new_tags), 500
+        gemini_configured = gemini_service.is_configured()
+        return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, new_tags=new_tags, gemini_configured=gemini_configured), 500
 
 
 @app.route('/recipe/<recipe_id>/delete', methods=['POST'])
@@ -303,6 +311,88 @@ def tag_manager():
     sorted_tags = sorted(all_tags.items(), key=lambda x: x[0])
     
     return render_template('tag_manager.html', tags=sorted_tags)
+
+
+# ============================================================================
+# Routes - Recipe Import
+# ============================================================================
+
+@app.route('/api/recipe/import/url', methods=['POST'])
+def import_recipe_from_url():
+    """Import recipe from a URL using Gemini AI."""
+    if not gemini_service.is_configured():
+        return jsonify({
+            'success': False,
+            'error': 'Gemini API is not configured. Please set GOOGLE_GEMINI_API_KEY environment variable.'
+        }), 500
+    
+    try:
+        data = request.get_json()
+        url = data.get('url', '').strip()
+        
+        if not url:
+            return jsonify({'success': False, 'error': 'URL is required'}), 400
+        
+        # Extract recipe using Gemini
+        success, recipe_data, error_msg = gemini_service.extract_from_url(url)
+        
+        if success and recipe_data:
+            app.logger.info(f"Successfully imported recipe from URL: {url}")
+            return jsonify({'success': True, 'recipe': recipe_data})
+        else:
+            app.logger.error(f"Failed to import recipe from URL: {error_msg}")
+            return jsonify({'success': False, 'error': error_msg or 'Could not extract recipe from URL'}), 400
+    
+    except Exception as e:
+        app.logger.error(f"Error importing recipe from URL: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/recipe/import/file', methods=['POST'])
+def import_recipe_from_file():
+    """Import recipe from a file (text or PDF) using Gemini AI."""
+    if not gemini_service.is_configured():
+        return jsonify({
+            'success': False,
+            'error': 'Gemini API is not configured. Please set GOOGLE_GEMINI_API_KEY environment variable.'
+        }), 500
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        filename = file.filename
+        file_content = file.read()
+        
+        # Determine file type and extract accordingly
+        if filename.lower().endswith('.pdf'):
+            success, recipe_data, error_msg = gemini_service.extract_from_pdf(file_content, filename)
+        elif filename.lower().endswith(('.txt', '.text')):
+            text_content = file_content.decode('utf-8', errors='ignore')
+            success, recipe_data, error_msg = gemini_service.extract_from_text(text_content, filename)
+        else:
+            # Try as text file by default
+            try:
+                text_content = file_content.decode('utf-8', errors='ignore')
+                success, recipe_data, error_msg = gemini_service.extract_from_text(text_content, filename)
+            except Exception as e:
+                return jsonify({'success': False, 'error': f'Unsupported file type: {filename}'}), 400
+        
+        if success and recipe_data:
+            app.logger.info(f"Successfully imported recipe from file: {filename}")
+            return jsonify({'success': True, 'recipe': recipe_data})
+        else:
+            app.logger.error(f"Failed to import recipe from file: {error_msg}")
+            return jsonify({'success': False, 'error': error_msg or 'Could not extract recipe from file'}), 400
+    
+    except Exception as e:
+        app.logger.error(f"Error importing recipe from file: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ============================================================================
