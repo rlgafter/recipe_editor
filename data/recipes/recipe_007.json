@@ -1,0 +1,119 @@
+{
+  "id": "recipe_007",
+  "name": "Italian Wedding Soup",
+  "ingredients": [
+    {
+      "amount": "1",
+      "unit": "pound",
+      "description": "boneless beef chuck"
+    },
+    {
+      "amount": "3/4",
+      "unit": "pound",
+      "description": "pork ribs"
+    },
+    {
+      "amount": "2",
+      "unit": "bone-in, skin-on",
+      "description": "chicken thighs"
+    },
+    {
+      "amount": "8",
+      "unit": "ounces",
+      "description": "prosciutto trimmings/ends (see notes)"
+    },
+    {
+      "amount": "6",
+      "unit": "ounces",
+      "description": "spicy salami or sopressata (whole, not sliced)"
+    },
+    {
+      "amount": "6",
+      "unit": "ounces",
+      "description": "mild salami or other dry-cured pork sausage (whole, not sliced)"
+    },
+    {
+      "amount": "2",
+      "unit": "medium",
+      "description": "red onions, halved"
+    },
+    {
+      "amount": "1",
+      "unit": "medium",
+      "description": "carrot"
+    },
+    {
+      "amount": "1",
+      "unit": "large",
+      "description": "celery rib"
+    },
+    {
+      "amount": "3",
+      "unit": "large sprigs",
+      "description": "flat-leaf parsley"
+    },
+    {
+      "amount": "2",
+      "unit": "links",
+      "description": "fresh Italian sausage"
+    },
+    {
+      "amount": "2",
+      "unit": "tablespoons",
+      "description": "extra-virgin olive oil"
+    },
+    {
+      "amount": "1/4",
+      "unit": "pound",
+      "description": "lardo or pancetta, diced"
+    },
+    {
+      "amount": "5",
+      "unit": "medium cloves",
+      "description": "garlic, sliced"
+    },
+    {
+      "amount": "1",
+      "unit": "",
+      "description": "fresh hot red pepper, such as a Fresno, stemmed and thinly sliced"
+    },
+    {
+      "amount": "2",
+      "unit": "pounds",
+      "description": "mixed bitter greens, such as escarole, dandelion, broccoli rabe, Swiss chard, Tuscan kale, small Napa cabbage, and/or chicory, trimmed and washed very well of sand and grit"
+    },
+    {
+      "amount": "",
+      "unit": "",
+      "description": "Kosher salt"
+    },
+    {
+      "amount": "",
+      "unit": "",
+      "description": "Garlic-rubbed toasted country bread slices, for serving (see notes)"
+    },
+    {
+      "amount": "",
+      "unit": "",
+      "description": "Grated Pecorino Romano, for serving"
+    }
+  ],
+  "instructions": "For the Meats and Broth:\r\nIn a pressure cooker, combine beef chuck, pork ribs, chicken thighs, prosciutto trimmings, spicy salami, mild salami, red onions, carrot, celery, and parsley. Cover with cold water (make sure water does not go above the max-fill line in the pressure cooker). Set to high pressure and cook at pressure for 25 minutes. Allow to depressurize naturally.\r\n\r\nAlternatively, the meats and vegetables can be simmered in a large soup pot or Dutch oven until meats are tender, about 3 hours.\r\n\r\nWhen cooker has depressurized, open lid, add fresh sausage, and poach until cooked through, about 5 minutes.\r\n\r\nTransfer meats to a work surface and allow to cool slightly. Discard onions, carrot, celery, and parsley. Shred and/or cut up the meats into serving-size pieces, discarding bones as you go. Skim pooled fat from surface of broth, then return meats to the broth. Season broth with salt only if it needs it.\r\n\r\nFor the Greens:\r\nIn a large saut\u00e9 pan, heat olive oil over medium heat with the lardo or pancetta, garlic, and chile pepper. Cook, stirring, until pork fat has largely rendered and pork is lightly browned, about 10 minutes. Working in batches to avoid crowding the pan, add greens, stirring and allowing to wilt down between additions (covering the pan can help trap steam and wilt the greens faster), until all the greens have been added and cooked down until very tender and a drab green color, about 25 minutes.\r\n\r\nOnce greens are very cooked and much of their water has evaporated, allow greens to gently fry in the rendered fat for a few minutes, wetting with small additions of the meat broth liquid to prevent excessive browning and drying. Season greens with salt only if they need it.\r\n\r\nWhen ready to serve, arrange toasts in serving bowls. Top with a generous portion of the cooked greens, then ladle broth and chunks of meat on top. Sprinkle with Pecorino Romano and serve.",
+  "notes": "You can often buy prosciutto ends and trimmings from a deli counter or specialty store that sells sliced-to-order prosciutto.\r\n\r\nTo make the toasts, drizzle slices of rustic country bread with olive oil, then toast until nicely browned. Rub each slice with a cut clove of raw garlic to infuse the garlic flavor into it.\r\n\r\nMake Ahead and Storage\r\nThis soup reheats and freezes beautifully. Simply transfer to an airtight container and refrigerate up to 4 days or freeze up to 3 months (it will be safe longer than this in the freezer, but the flavor and texture may begin to suffer.) You may need to thin with a little water when reheating.",
+  "tags": [
+    "ITALIAN",
+    "MAINS",
+    "SOUP"
+  ],
+  "created_at": "2025-10-19T12:21:00.613829",
+  "updated_at": "2025-10-19T12:21:41.689483",
+  "user_id": null,
+  "rating": null,
+  "favorites": [],
+  "source": {
+    "name": "Serious Eats",
+    "url": "https://www.seriouseats.com/italian-wedding-soup-minestra-maritata-11829506",
+    "author": "Daniel Gritzer",
+    "issue": ""
+  }
+}

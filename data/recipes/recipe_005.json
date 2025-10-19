@@ -1,0 +1,66 @@
+{
+  "id": "recipe_005",
+  "name": "Basic Chutney Recipe",
+  "ingredients": [
+    {
+      "amount": "500",
+      "unit": "grams",
+      "description": "apples"
+    },
+    {
+      "amount": "500",
+      "unit": "grams",
+      "description": "onions"
+    },
+    {
+      "amount": "1000",
+      "unit": "grams",
+      "description": "any other fruit or vegetable which could be more apples and onions"
+    },
+    {
+      "amount": "160",
+      "unit": "grams",
+      "description": "raisins or other dried fruit"
+    },
+    {
+      "amount": "350",
+      "unit": "grams",
+      "description": "vinegar I like using cider or malt"
+    },
+    {
+      "amount": "350",
+      "unit": "grams",
+      "description": "white sugar"
+    },
+    {
+      "amount": "1",
+      "unit": "tablespoon",
+      "description": "salt"
+    },
+    {
+      "amount": "2",
+      "unit": "tablespoons",
+      "description": "spices"
+    }
+  ],
+  "instructions": "1. Peel and core the apples\r\n\r\n2. Peel the onions and prepare the other fruit and veg you are using.\r\n\r\n3. Chop all fruit and veg in a food processor, or by hand, depending on your level of patience.\r\n\r\n4. Transfer the fruit and veg to a large pot, add the vinegar, sugar, and spices.\r\n\r\n5. Stir well with a wooden spoon, and bring the mixture to a boil. Reduce the heat to medium-low, and simmer, stirring regularly, until the mixture reaches a jam-like consistency\u2014approximately 90 minutes.\r\n\r\n6. When your chutney has thickened and your jars/lids are sterilized, bring everything over to a cleared space in your kitchen to start jarring.\r\n\r\n7. Using a clean stainless steel ladle or serving spoon, carefully spoon the hot chutney into the jars almost to the top\u2014making sure to keep the rims of the jars clean. If any chutney drips onto the jar rim, simply wipe it clean with a tea towel. A stainless steel jarring funnel is helpful here, but if you don't have one, you just need to be extra cautious.\r\n\r\n8. Once the jars are filled, screw the lids on tightly. You should start to hear them pop as they seal naturally over the course of an hour or so.\r\n\r\n9. Store in a cool dark place until ready to enjoy!",
+  "notes": "The best way to test if your chutney has cooked down enough is to put a little spoonful on a plate in the fridge and let it chill for 5 minutes or so. If the liquid runs across the plate, it needs more cooking. If the liquid is quite thick and set, the chutney is done.\r\n\r\nThe total volume of chutney you end up with will depend greatly on which fruit and veg you use. If you are using a lot of yellow plums, for example, which are very liquidy, the chutney will have to reduce a lot more\u2014yielding less total chutney in the end. By contrast, if you use mostly carrots or beets, which contain less water, you will yield more chutney in the end.",
+  "tags": [
+    "CONDIMENT",
+    "SAUCE",
+    "VEGETARIAN",
+    "PRESERVE",
+    "FALL"
+  ],
+  "created_at": "2025-10-19T11:33:46.214070",
+  "updated_at": "2025-10-19T11:33:46.214086",
+  "user_id": null,
+  "rating": null,
+  "favorites": [],
+  "source": {
+    "name": "How To Make Dinner",
+    "url": "https://howtomakedinner.com/blog/how-to-make-chutney/#recipe",
+    "author": "Paula",
+    "issue": ""
+  }
+}

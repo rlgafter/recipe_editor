@@ -11,5 +11,98 @@
       "recipe_002"
     ],
     "created_at": "2025-10-11T12:15:31.993557"
+  },
+  "PASTA": {
+    "recipes": [
+      "recipe_004"
+    ],
+    "created_at": "2025-10-19T11:30:40.144358"
+  },
+  "CREAMY": {
+    "recipes": [
+      "recipe_004"
+    ],
+    "created_at": "2025-10-19T11:30:40.144368"
+  },
+  "QUICK": {
+    "recipes": [
+      "recipe_004"
+    ],
+    "created_at": "2025-10-19T11:30:40.144373"
+  },
+  "ITALIAN": {
+    "recipes": [
+      "recipe_004",
+      "recipe_007"
+    ],
+    "created_at": "2025-10-19T11:30:40.144377"
+  },
+  "DINNER": {
+    "recipes": [
+      "recipe_004"
+    ],
+    "created_at": "2025-10-19T11:30:40.144381"
+  },
+  "COMFORT FOOD": {
+    "recipes": [
+      "recipe_004",
+      "recipe_006"
+    ],
+    "created_at": "2025-10-19T11:30:40.144384"
+  },
+  "CONDIMENT": {
+    "recipes": [
+      "recipe_005"
+    ],
+    "created_at": "2025-10-19T11:33:46.216000"
+  },
+  "SAUCE": {
+    "recipes": [
+      "recipe_005"
+    ],
+    "created_at": "2025-10-19T11:33:46.216013"
+  },
+  "VEGETARIAN": {
+    "recipes": [
+      "recipe_005",
+      "recipe_006"
+    ],
+    "created_at": "2025-10-19T11:33:46.216019"
+  },
+  "PRESERVE": {
+    "recipes": [
+      "recipe_005"
+    ],
+    "created_at": "2025-10-19T11:33:46.216026"
+  },
+  "FALL": {
+    "recipes": [
+      "recipe_005"
+    ],
+    "created_at": "2025-10-19T11:33:46.216031"
+  },
+  "SIDE DISH": {
+    "recipes": [
+      "recipe_006"
+    ],
+    "created_at": "2025-10-19T12:10:54.241253"
+  },
+  "KALE": {
+    "recipes": [
+      "recipe_006"
+    ],
+    "created_at": "2025-10-19T12:10:54.241263"
+  },
+  "MAINS": {
+    "recipes": [
+      "recipe_007"
+    ],
+    "created_at": "2025-10-19T12:21:41.690446"
+  },
+  "SOUP": {
+    "recipes": [
+      "recipe_007"
+    ],
+    "created_at": "2025-10-19T12:21:41.690453"
   }
 }

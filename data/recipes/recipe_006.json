@@ -1,0 +1,75 @@
+{
+  "id": "recipe_006",
+  "name": "Love Creamed Spinach? This Kale Version Is Heartier and More Flavorful",
+  "ingredients": [
+    {
+      "amount": "1 1/2",
+      "unit": "pounds",
+      "description": "lacinato or curly kale (680 g; about 3 medium bunches), stemmed"
+    },
+    {
+      "amount": "2",
+      "unit": "tablespoons",
+      "description": "plus 1 1/4 teaspoons (about 22 g) Diamond Crystal kosher salt, divided; for table salt, use half as much by volume"
+    },
+    {
+      "amount": "1",
+      "unit": "tablespoon",
+      "description": "(15 ml) extra-virgin olive oil"
+    },
+    {
+      "amount": "1",
+      "unit": "large",
+      "description": "shallot (about 3 1/2 ounces; 100 g), finely chopped"
+    },
+    {
+      "amount": "1 1/2",
+      "unit": "cups",
+      "description": "(360 ml) heavy cream"
+    },
+    {
+      "amount": "3",
+      "unit": "tablespoons",
+      "description": "(43 g) unsalted butter"
+    },
+    {
+      "amount": "1",
+      "unit": "large",
+      "description": "clove garlic, finely grated"
+    },
+    {
+      "amount": "2",
+      "unit": "ounces",
+      "description": "(57 g) cream cheese, softened"
+    },
+    {
+      "amount": "1 1/2",
+      "unit": "ounce",
+      "description": "(43 g) finely grated Parmigiano-Reggiano cheese (about 1/4 cup)"
+    },
+    {
+      "amount": "1/4",
+      "unit": "cup",
+      "description": "(60 ml) water"
+    }
+  ],
+  "instructions": "1. Bring a large pot of water and 2 tablespoons (18 g) kosher salt to a boil over high heat.\r\n2. Add kale and cook, stirring occasionally, until vibrant green and tender, 6 to 7 minutes.\r\n3. Using tongs or a spider strainer, transfer kale to a rimmed baking sheet, and let cool until cool enough to handle, about 15 minutes.\r\n4. Working in batches, wrap kale in a clean kitchen towel, and squeeze to remove excess liquid.\r\n5. Coarsely chop kale and set aside.\r\n\r\n6. While kale cools, heat oil in a medium saucepan or high-sided skillet over medium heat.\r\n7. Add shallot and cook, stirring often, until softened and translucent, about 5 minutes.\r\n8. Add cream and bring to a simmer over medium heat, about 1 minute.\r\n9. Cook, stirring frequently, until cream is thickened and reduced by about half, 8 to 10 minutes.\r\n10. Reduce heat to low.\r\n11. Add butter, garlic, and remaining 1 1/4 teaspoons (about 4 g) kosher salt.\r\n12. Cook, stirring constantly, until butter is melted.\r\n13. Add cream cheese and Parmesan.\r\n14. Whisk until combined, about 2 minutes.\r\n15. Stir in kale and cook, stirring occasionally, until warmed through and evenly coated in cream mixture, about 2 minutes.\r\n16. If needed, gradually add up to 1/4 cup water to loosen mixture to desired consistency.\r\n17. Remove from heat, and serve immediately.",
+  "notes": "Creamed kale can be refrigerated in an airtight container for up to 4 days. Gently reheat on the stovetop or in the microwave, adding a little cream as needed to achieve the proper consistency.",
+  "tags": [
+    "VEGETARIAN",
+    "SIDE DISH",
+    "KALE",
+    "COMFORT FOOD"
+  ],
+  "created_at": "2025-10-19T12:10:54.238565",
+  "updated_at": "2025-10-19T12:10:54.238583",
+  "user_id": null,
+  "rating": null,
+  "favorites": [],
+  "source": {
+    "name": "Serious Eats",
+    "url": "https://www.seriouseats.com/creamed-kale-recipe-11829424",
+    "author": "Laila Ibrahim",
+    "issue": ""
+  }
+}
