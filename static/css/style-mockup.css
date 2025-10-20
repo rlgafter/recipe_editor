@@ -462,45 +462,6 @@ select:focus {
     outline-offset: 2px;
 }
 
-/* Custom dark card headers with perfect contrast */
-.header-dark {
-    background-color: var(--very-dark-olive) !important;
-    color: #ffffff !important;
-    border-bottom: 3px solid var(--dark-olive);
-    padding: 1rem;
-}
-
-.header-dark h5 {
-    color: #ffffff !important;
-    font-weight: 600;
-    margin: 0;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.header-dark i {
-    color: var(--cream) !important;
-    margin-right: 0.5rem;
-}
-
-.header-dark-alt {
-    background-color: var(--dark-olive) !important;
-    color: #ffffff !important;
-    border-bottom: 3px solid var(--golden-brown);
-    padding: 1rem;
-}
-
-.header-dark-alt h5 {
-    color: #ffffff !important;
-    font-weight: 600;
-    margin: 0;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.header-dark-alt i {
-    color: var(--cream) !important;
-    margin-right: 0.5rem;
-}
-
 /* Animations */
 @keyframes fadeIn {
     from {

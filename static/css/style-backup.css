@@ -1,0 +1,290 @@
+/* Recipe Editor - Custom Styles */
+
+:root {
+    --primary-color: #772f1a;
+    --secondary-color: #f58549;
+    --success-color: #f2a65a;
+    --danger-color: #eec170;
+    --warning-color: #ffc107;
+    --info-color: #585123;
+}
+
+/* Body and Layout */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Navigation */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.3rem;
+}
+
+/* Recipe Cards */
+.recipe-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.recipe-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.recipe-card .card-title a {
+    color: #212529;
+    transition: color 0.2s;
+}
+
+.recipe-card .card-title a:hover {
+    color: var(--primary-color);
+}
+
+/* Badge Styles */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* Forms */
+.form-label {
+    font-weight: 500;
+}
+
+.ingredient-row {
+    background-color: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    border: 1px solid #dee2e6;
+}
+
+.ingredient-row:hover {
+    background-color: #e9ecef;
+}
+
+.remove-ingredient {
+    width: 100%;
+}
+
+/* Recipe View */
+pre {
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+}
+
+/* Source Information */
+.source-info {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.source-info a {
+    word-break: break-all;
+}
+
+.bg-light.source-section {
+    border-left: 4px solid var(--info-color);
+}
+
+/* Tag Filter Sidebar */
+.form-check-label {
+    cursor: pointer;
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background: white;
+    }
+    
+    .navbar,
+    .footer,
+    .no-print,
+    .btn,
+    .modal {
+        display: none !important;
+    }
+    
+    .alert {
+        background: transparent !important;
+        border: 1px solid #000 !important;
+        padding: 0.5rem !important;
+        page-break-inside: avoid;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .card-body {
+        padding: 0 !important;
+    }
+    
+    h1 {
+        font-size: 28pt;
+        margin-bottom: 1rem;
+    }
+    
+    h2 {
+        font-size: 20pt;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        page-break-after: avoid;
+    }
+    
+    ul, ol {
+        page-break-inside: avoid;
+    }
+    
+    .list-group-item {
+        border: none;
+        padding: 0.25rem 0;
+    }
+    
+    .badge {
+        border: 1px solid #000;
+        color: #000 !important;
+        background: white !important;
+    }
+}
+
+/* Loading Spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+/* Tooltips and Popovers */
+.tooltip-inner {
+    max-width: 300px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .ingredient-row .col-md-2 {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .ingredient-row .col-md-7 {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .ingredient-row .col-md-1 {
+        width: 100%;
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: 0.25rem !important;
+        margin-bottom: 0.25rem;
+    }
+}
+
+/* Footer */
+.footer {
+    margin-top: auto;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Focus styles for accessibility */
+a:focus,
+button:focus,
+input:focus,
+textarea:focus,
+select:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Tag Pills in Form */
+.form-check-inline {
+    margin-right: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Empty State */
+.alert-warning a {
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+/* Modal improvements */
+.modal-content {
+    border-radius: 0.5rem;
+}
+
+.modal-header {
+    border-bottom: 2px solid var(--primary-color);
+}
+
+/* Table improvements */
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Card header improvements */
+.card-header h5 {
+    margin: 0;
+}
+
+/* Button improvements */
+.btn {
+    transition: all 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
