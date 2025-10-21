@@ -31,3 +31,14 @@ beautifulsoup4==4.12.3
 # For PDF parsing
 PyPDF2==3.0.1
 
+# MySQL Database
+mysql-connector-python==8.2.0
+SQLAlchemy==2.0.23
+
+# Password hashing
+bcrypt==4.1.1
+
+# Flask extensions for auth and sessions
+Flask-Login==0.6.3
+Flask-SQLAlchemy==3.1.1
+

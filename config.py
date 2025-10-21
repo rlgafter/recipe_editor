@@ -26,6 +26,21 @@ SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'True') == 'True'
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', SMTP_USERNAME)
 SENDER_NAME = os.environ.get('SENDER_NAME', 'Recipe Editor')
 
+# Storage Backend Configuration
+STORAGE_BACKEND = os.environ.get('STORAGE_BACKEND', 'json')  # 'json' or 'mysql'
+
+# MySQL Configuration (if using MySQL backend)
+MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
+MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 3306))
+MYSQL_USER = os.environ.get('MYSQL_USER', 'recipe_user')
+MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
+MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'recipe_editor')
+
+# SQLAlchemy Configuration
+SQLALCHEMY_DATABASE_URI = f"mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4"
+SQLALCHEMY_TRACK_MODIFICATIONS = False
+SQLALCHEMY_ECHO = os.environ.get('SQL_ECHO', 'False').lower() == 'true'
+
 # Application Settings
 RECIPES_PER_PAGE = 50
 MAX_INGREDIENTS = 100

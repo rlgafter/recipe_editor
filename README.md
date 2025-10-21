@@ -11,7 +11,8 @@ A web-based recipe management application built with Python Flask. Create, edit,
 - 📧 **Email Sharing**: Send beautifully formatted recipes via email
 - 🖨️ **Print Support**: Print-optimized recipe layout
 - 📱 **Responsive Design**: Works on desktop, tablet, and mobile devices
-- 💾 **JSON Storage**: Simple, portable file-based storage
+- 💾 **Flexible Storage**: JSON file-based storage (default) or MySQL database
+- 👥 **Multi-User Ready**: MySQL backend supports user authentication and personal recipe collections
 
 ## Table of Contents
 
@@ -350,7 +351,23 @@ $env:VARIABLE_NAME="value"
 
 ## Data Storage
 
+### JSON Storage (Default)
+
 Recipes are stored as JSON files in the `data/recipes/` directory. Each recipe has its own file (e.g., `recipe_001.json`). Tags and their associations are stored in `data/tags.json`.
+
+### MySQL Storage (Optional - Multi-User)
+
+For multi-user support with advanced features, you can migrate to MySQL. See [MYSQL_MIGRATION.md](MYSQL_MIGRATION.md) for complete setup instructions.
+
+**MySQL features:**
+- User authentication and profiles
+- Normalized ingredient catalog
+- Search recipes by ingredient
+- Collections/cookbooks
+- Meal planning
+- Favorites and ratings
+- Public/private recipes
+- Advanced analytics
 
 ### Backup
 
