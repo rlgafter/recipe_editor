@@ -623,10 +623,8 @@ function showImportSuccess(message) {
     status.querySelector('.alert').className = 'alert alert-success';
     status.querySelector('.spinner-border').classList.add('d-none');
     
-    // Hide after 3 seconds
-    setTimeout(() => {
-        status.classList.add('d-none');
-    }, 3000);
+    // DO NOT auto-hide - let message stay visible until manually dismissed or page navigation
+    // User requested all messages stay on screen
 }
 
 function showImportError(message) {
@@ -637,10 +635,8 @@ function showImportError(message) {
     status.querySelector('.alert').className = 'alert alert-danger';
     status.querySelector('.spinner-border').classList.add('d-none');
     
-    // Hide after 5 seconds
-    setTimeout(() => {
-        status.classList.add('d-none');
-    }, 5000);
+    // DO NOT auto-hide - let error message stay visible until manually dismissed or page navigation
+    // User requested all messages stay on screen
 }
 {% endif %}
 </script>

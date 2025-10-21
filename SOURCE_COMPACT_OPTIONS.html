@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Source Information - Compact Design Options</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .example-container {
+            background: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .example-header {
+            background: #0d6efd;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .space-comparison {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 10px;
+        }
+        .current-design {
+            border-left: 4px solid #dc3545;
+        }
+        .recommended {
+            border-left: 4px solid #198754;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="mb-4">Source Information - Compact Design Options</h1>
+    <p class="lead">Here are various ways to reduce the space taken by source information:</p>
+
+    <!-- CURRENT DESIGN -->
+    <div class="example-container current-design">
+        <div class="example-header">
+            <strong>CURRENT DESIGN</strong> (Most Space)
+        </div>
+        
+        <h1 class="card-title mb-3">Coconut Chicken Curry</h1>
+        
+        <div class="alert alert-info mb-3">
+            <h6 class="mb-2">
+                <i class="bi bi-book"></i> Source
+            </h6>
+            <div class="source-info">
+                <strong>Burma Superstar</strong>
+                <span class="text-muted">(Desmond Tan and Kate Leahy)</span>
+                <br>
+                <a href="https://example.com/recipe" target="_blank">
+                    <i class="bi bi-link-45deg"></i> https://example.com/recipe
+                </a>
+            </div>
+        </div>
+        
+        <div class="space-comparison">
+            📏 Height: ~110px | Uses full-width alert box
+        </div>
+    </div>
+
+    <!-- OPTION 1: INLINE COMPACT -->
+    <div class="example-container recommended">
+        <div class="example-header">
+            <strong>OPTION 1: INLINE COMPACT</strong> ⭐ Recommended
+        </div>
+        
+        <h1 class="card-title mb-2">Coconut Chicken Curry</h1>
+        <p class="text-muted mb-3">
+            <i class="bi bi-book"></i> <strong>Burma Superstar</strong> by Desmond Tan and Kate Leahy
+            <a href="https://example.com/recipe" target="_blank" class="ms-2">
+                <i class="bi bi-link-45deg"></i>
+            </a>
+        </p>
+        
+        <div class="space-comparison">
+            📏 Height: ~30px | <strong style="color: #198754;">Saves ~73% space</strong>
+        </div>
+    </div>
+
+    <!-- OPTION 2: MINIMAL BADGE -->
+    <div class="example-container">
+        <div class="example-header">
+            <strong>OPTION 2: MINIMAL BADGE</strong>
+        </div>
+        
+        <h1 class="card-title mb-2">Coconut Chicken Curry</h1>
+        <div class="mb-3">
+            <span class="badge bg-secondary">
+                <i class="bi bi-book"></i> Burma Superstar
+            </span>
+            <small class="text-muted ms-2">by Desmond Tan and Kate Leahy</small>
+            <a href="https://example.com/recipe" target="_blank" class="ms-2">
+                <i class="bi bi-link-45deg"></i>
+            </a>
+        </div>
+        
+        <div class="space-comparison">
+            📏 Height: ~28px | <strong style="color: #198754;">Saves ~75% space</strong>
+        </div>
+    </div>
+
+    <!-- OPTION 3: COLLAPSIBLE DETAILS -->
+    <div class="example-container">
+        <div class="example-header">
+            <strong>OPTION 3: COLLAPSIBLE DETAILS</strong>
+        </div>
+        
+        <h1 class="card-title mb-2">Coconut Chicken Curry</h1>
+        <p class="mb-3">
+            <a class="text-decoration-none" data-bs-toggle="collapse" href="#sourceDetails" role="button">
+                <i class="bi bi-book"></i> <strong>Burma Superstar</strong> 
+                <i class="bi bi-chevron-down small"></i>
+            </a>
+        </p>
+        <div class="collapse" id="sourceDetails">
+            <div class="card card-body mb-3" style="font-size: 0.9em;">
+                <strong>Author:</strong> Desmond Tan and Kate Leahy<br>
+                <strong>URL:</strong> <a href="https://example.com/recipe" target="_blank">https://example.com/recipe</a>
+            </div>
+        </div>
+        
+        <div class="space-comparison">
+            📏 Height: ~25px when collapsed | <strong style="color: #198754;">Saves ~77% space</strong>
+        </div>
+    </div>
+
+    <!-- OPTION 4: SINGLE LINE WITH ICON -->
+    <div class="example-container">
+        <div class="example-header">
+            <strong>OPTION 4: SINGLE LINE WITH ICON</strong>
+        </div>
+        
+        <h1 class="card-title mb-2">Coconut Chicken Curry</h1>
+        <div class="d-flex align-items-center mb-3 text-muted" style="font-size: 0.9em;">
+            <i class="bi bi-book me-2"></i>
+            <span><strong>Burma Superstar</strong> (Desmond Tan and Kate Leahy)</span>
+            <a href="https://example.com/recipe" target="_blank" class="ms-2">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+        </div>
+        
+        <div class="space-comparison">
+            📏 Height: ~24px | <strong style="color: #198754;">Saves ~78% space</strong>
+        </div>
+    </div>
+
+    <!-- OPTION 5: FOOTER STYLE -->
+    <div class="example-container">
+        <div class="example-header">
+            <strong>OPTION 5: FOOTER STYLE</strong> (Move to bottom)
+        </div>
+        
+        <h1 class="card-title mb-3">Coconut Chicken Curry</h1>
+        
+        <div class="alert alert-secondary" style="padding: 8px 12px; font-size: 0.85em;">
+            <i class="bi bi-info-circle"></i> <small>From <strong>Burma Superstar</strong> by Desmond Tan and Kate Leahy</small>
+        </div>
+        
+        <div class="space-comparison">
+            📏 Height: ~35px | Moves source below recipe content, <strong style="color: #198754;">saves space above</strong>
+        </div>
+    </div>
+
+    <!-- OPTION 6: MINIMAL WITH TOOLTIP -->
+    <div class="example-container recommended">
+        <div class="example-header">
+            <strong>OPTION 6: MINIMAL WITH TOOLTIP</strong> ⭐ Most Compact
+        </div>
+        
+        <h1 class="card-title mb-3">
+            Coconut Chicken Curry
+            <a href="#" class="text-muted" style="font-size: 0.6em; text-decoration: none;" 
+               data-bs-toggle="tooltip" 
+               data-bs-placement="right" 
+               title="Source: Burma Superstar by Desmond Tan and Kate Leahy">
+                <i class="bi bi-book"></i>
+            </a>
+        </h1>
+        
+        <div class="space-comparison">
+            📏 Height: ~0px additional | <strong style="color: #198754;">Saves ~100% space</strong> - Source info appears on hover
+        </div>
+    </div>
+
+    <!-- OPTION 7: SIDEBAR BADGE -->
+    <div class="example-container">
+        <div class="example-header">
+            <strong>OPTION 7: SMALL PILL WITH POPOVER</strong>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <h1 class="card-title mb-0">Coconut Chicken Curry</h1>
+            <button type="button" class="btn btn-sm btn-outline-secondary" 
+                    data-bs-toggle="popover" 
+                    data-bs-placement="left"
+                    data-bs-title="Recipe Source"
+                    data-bs-content="Burma Superstar by Desmond Tan and Kate Leahy">
+                <i class="bi bi-book"></i>
+            </button>
+        </div>
+        
+        <div class="space-comparison">
+            📏 Height: ~0px additional | <strong style="color: #198754;">Saves ~100% space</strong> - Source in popover
+        </div>
+    </div>
+
+    <!-- OPTION 8: CONDENSED ALERT -->
+    <div class="example-container">
+        <div class="example-header">
+            <strong>OPTION 8: CONDENSED ALERT</strong>
+        </div>
+        
+        <h1 class="card-title mb-2">Coconut Chicken Curry</h1>
+        
+        <div class="alert alert-info mb-3" style="padding: 6px 12px; font-size: 0.85em;">
+            <i class="bi bi-book"></i> 
+            <strong>Burma Superstar</strong> by Desmond Tan and Kate Leahy
+            <a href="https://example.com/recipe" target="_blank" class="ms-1">
+                <i class="bi bi-link-45deg"></i>
+            </a>
+        </div>
+        
+        <div class="space-comparison">
+            📏 Height: ~35px | <strong style="color: #198754;">Saves ~68% space</strong>
+        </div>
+    </div>
+
+    <!-- COMPARISON TABLE -->
+    <div class="example-container mt-5">
+        <h3 class="mb-3">Space Savings Comparison</h3>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Option</th>
+                    <th>Height</th>
+                    <th>Space Saved</th>
+                    <th>Pros</th>
+                    <th>Cons</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="table-danger">
+                    <td><strong>Current</strong></td>
+                    <td>~110px</td>
+                    <td>-</td>
+                    <td>Very visible</td>
+                    <td>Takes lots of space</td>
+                </tr>
+                <tr class="table-success">
+                    <td><strong>Option 1: Inline</strong> ⭐</td>
+                    <td>~30px</td>
+                    <td>73%</td>
+                    <td>Clean, always visible, professional</td>
+                    <td>None</td>
+                </tr>
+                <tr>
+                    <td>Option 2: Badge</td>
+                    <td>~28px</td>
+                    <td>75%</td>
+                    <td>Visual badge stands out</td>
+                    <td>Less formal</td>
+                </tr>
+                <tr>
+                    <td>Option 3: Collapsible</td>
+                    <td>~25px</td>
+                    <td>77%</td>
+                    <td>Hides details until needed</td>
+                    <td>Requires click to see details</td>
+                </tr>
+                <tr>
+                    <td>Option 4: Single Line</td>
+                    <td>~24px</td>
+                    <td>78%</td>
+                    <td>Very compact, clean</td>
+                    <td>Slightly smaller text</td>
+                </tr>
+                <tr>
+                    <td>Option 5: Footer</td>
+                    <td>~35px</td>
+                    <td>68%*</td>
+                    <td>Moves away from title</td>
+                    <td>Less prominent</td>
+                </tr>
+                <tr class="table-success">
+                    <td><strong>Option 6: Tooltip</strong> ⭐</td>
+                    <td>~0px</td>
+                    <td>100%</td>
+                    <td>Maximum space saving</td>
+                    <td>Requires hover to see</td>
+                </tr>
+                <tr>
+                    <td>Option 7: Popover</td>
+                    <td>~0px</td>
+                    <td>100%</td>
+                    <td>Maximum space, click for details</td>
+                    <td>Requires interaction</td>
+                </tr>
+                <tr>
+                    <td>Option 8: Condensed Alert</td>
+                    <td>~35px</td>
+                    <td>68%</td>
+                    <td>Similar to current but smaller</td>
+                    <td>Still takes some space</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="alert alert-success mt-4">
+            <strong>💡 Recommendations:</strong>
+            <ul class="mb-0 mt-2">
+                <li><strong>Best Balance:</strong> Option 1 (Inline Compact) - Clean, professional, always visible</li>
+                <li><strong>Most Compact:</strong> Option 6 (Tooltip) - Perfect if source is reference info</li>
+                <li><strong>User Friendly:</strong> Option 3 (Collapsible) - Gives users choice to expand</li>
+            </ul>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Initialize Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+    
+    // Initialize Bootstrap popovers
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl)
+    })
+</script>
+
+</body>
+</html>
+

@@ -4,15 +4,10 @@
 
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-dismiss alerts after 5 seconds
-    const alerts = document.querySelectorAll('.alert:not(.alert-info):not(.alert-warning)');
-    alerts.forEach(alert => {
-        setTimeout(() => {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        }, 5000);
-    });
-
+    // DO NOT auto-dismiss alerts - let them stay on screen
+    // User requested all error, warning, and informational messages stay visible
+    // Users can manually dismiss them using the X button if present
+    
     // Initialize tooltips if Bootstrap is available
     if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -236,7 +231,8 @@ function showToast(message, type = 'info') {
     `;
     
     toastContainer.appendChild(toast);
-    const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+    // Set autohide to false so toasts stay visible until manually dismissed
+    const bsToast = new bootstrap.Toast(toast, { autohide: false });
     bsToast.show();
     
     toast.addEventListener('hidden.bs.toast', () => {

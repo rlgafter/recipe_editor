@@ -35,26 +35,20 @@
                 
                 <!-- Source Information -->
                 {% if recipe.source and recipe.source.name %}
-                    <div class="alert alert-info mb-3">
-                        <h6 class="mb-2">
-                            <i class="bi bi-book"></i> Source
-                        </h6>
-                        <div class="source-info">
-                            <strong>{{ recipe.source.name }}</strong>
-                            {% if recipe.source.author %}
-                                <span class="text-muted">({{ recipe.source.author }})</span>
-                            {% endif %}
-                            {% if recipe.source.issue %}
-                                <span class="text-muted">- {{ recipe.source.issue }}</span>
-                            {% endif %}
-                            {% if recipe.source.url %}
-                                <br>
-                                <a href="{{ recipe.source.url }}" target="_blank" class="no-print">
-                                    <i class="bi bi-link-45deg"></i> {{ recipe.source.url }}
-                                </a>
-                                <span class="d-none d-print-inline">{{ recipe.source.url }}</span>
-                            {% endif %}
-                        </div>
+                    <div class="mb-3" style="padding: 8px 0; font-size: 0.9em;">
+                        <i class="bi bi-book text-muted"></i> 
+                        <strong>{{ recipe.source.name }}</strong>
+                        {% if recipe.source.author %}
+                            <span class="text-muted">by {{ recipe.source.author }}</span>
+                        {% endif %}
+                        {% if recipe.source.issue %}
+                            <span class="text-muted">- {{ recipe.source.issue }}</span>
+                        {% endif %}
+                        {% if recipe.source.url %}
+                            <a href="{{ recipe.source.url }}" target="_blank" class="ms-2 no-print">
+                                <i class="bi bi-link-45deg"></i>
+                            </a>
+                        {% endif %}
                     </div>
                 {% endif %}
                 
@@ -89,9 +83,9 @@
                 <h2 class="mt-4 mb-3">
                     <i class="bi bi-basket"></i> Ingredients
                 </h2>
-                <ul class="list-group list-group-flush mb-4">
+                <ul class="list-unstyled mb-4" style="line-height: 1.6;">
                     {% for ingredient in recipe.ingredients %}
-                        <li class="list-group-item">
+                        <li style="margin-bottom: 0.3rem;">
                             {% if ingredient.amount %}
                                 <strong>{{ ingredient.amount }}</strong>
                             {% endif %}
