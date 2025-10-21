@@ -5,6 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import re
 import config
 from models import Recipe, Ingredient
 from storage import storage
@@ -399,6 +400,75 @@ def import_recipe_from_file():
 # Helper Functions
 # ============================================================================
 
+def _convert_unicode_fractions(amount: str) -> str:
+    """
+    Convert unicode fraction characters to ASCII equivalents.
+    Also handles common variations and spacing issues.
+    
+    Examples:
+        '½' -> '1/2'
+        '¼' -> '1/4'
+        '¾' -> '3/4'
+        '1½' -> '1 1/2'
+        '2¼' -> '2 1/4'
+        '1 1 /2' -> '1 1/2'
+    """
+    if not amount:
+        return amount
+    
+    original_amount = amount
+    
+    # Map of unicode fractions to ASCII
+    unicode_fractions = {
+        '¼': '1/4',
+        '½': '1/2',
+        '¾': '3/4',
+        '⅐': '1/7',
+        '⅑': '1/9',
+        '⅒': '1/10',
+        '⅓': '1/3',
+        '⅔': '2/3',
+        '⅕': '1/5',
+        '⅖': '2/5',
+        '⅗': '3/5',
+        '⅘': '4/5',
+        '⅙': '1/6',
+        '⅚': '5/6',
+        '⅛': '1/8',
+        '⅜': '3/8',
+        '⅝': '5/8',
+        '⅞': '7/8',
+    }
+    
+    # First, detect and convert mixed unicode fractions (e.g., '1½' -> '1 1/2')
+    for unicode_char, ascii_fraction in unicode_fractions.items():
+        if unicode_char in amount:
+            # Check if there's a digit before the unicode fraction
+            pattern = r'(\d+)' + re.escape(unicode_char)
+            match = re.search(pattern, amount)
+            if match:
+                # Mixed fraction: digit + unicode fraction
+                whole_number = match.group(1)
+                amount = amount.replace(match.group(0), f"{whole_number} {ascii_fraction}")
+                app.logger.debug(f"[UNICODE DEBUG] Converted mixed fraction: '{original_amount}' -> '{amount}'")
+            else:
+                # Simple unicode fraction
+                amount = amount.replace(unicode_char, ascii_fraction)
+                app.logger.debug(f"[UNICODE DEBUG] Converted simple fraction: '{original_amount}' -> '{amount}'")
+    
+    # Fix spacing issues in fractions (e.g., '1 1 /2' -> '1 1/2')
+    # Pattern: digit + space(s) + digit + space(s) + / + digit
+    amount = re.sub(r'(\d+)\s+(\d+)\s*/\s*(\d+)', r'\1 \2/\3', amount)
+    
+    # Fix spacing issues in simple fractions (e.g., '1 /2' -> '1/2')
+    amount = re.sub(r'(\d+)\s*/\s*(\d+)', r'\1/\2', amount)
+    
+    if amount != original_amount:
+        app.logger.info(f"[AMOUNT CONVERSION] '{original_amount}' -> '{amount}'")
+    
+    return amount.strip()
+
+
 def _parse_recipe_form(form_data, recipe_id=None):
     """Parse recipe data from form submission."""
     # Get basic fields
@@ -426,6 +496,12 @@ def _parse_recipe_form(form_data, recipe_id=None):
         if description:
             amount = form_data.get(f'ingredient_amount_{ingredient_count}', '').strip()
             unit = form_data.get(f'ingredient_unit_{ingredient_count}', '').strip()
+            
+            # Convert unicode fractions to ASCII (with debug logging)
+            if amount:
+                app.logger.debug(f"[INGREDIENT {ingredient_count}] Raw amount: '{amount}'")
+                amount = _convert_unicode_fractions(amount)
+                app.logger.debug(f"[INGREDIENT {ingredient_count}] Converted amount: '{amount}'")
             
             ingredient = Ingredient(amount=amount, unit=unit, description=description)
             ingredients.append(ingredient)
