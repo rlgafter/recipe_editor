@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}My Favorites - Recipe Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="mb-4">
+            <i class="bi bi-heart-fill text-danger"></i> My Favorite Recipes
+        </h1>
+        
+        {% if recipes %}
+            <div class="row">
+                {% for recipe in recipes %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card recipe-card">
+                            <div class="card-body">
+                                <h3 class="card-title">
+                                    <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}">
+                                        {{ recipe.name }}
+                                    </a>
+                                </h3>
+                                
+                                {% if recipe.description %}
+                                    <p class="card-text text-muted">
+                                        {{ recipe.description[:100] }}{% if recipe.description|length > 100 %}...{% endif %}
+                                    </p>
+                                {% endif %}
+                                
+                                <div class="mb-2">
+                                    {% for tag in recipe.tags %}
+                                        <span class="badge bg-primary me-1">{{ tag.name }}</span>
+                                    {% endfor %}
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        by {{ recipe.owner.display_name }}
+                                    </small>
+                                    {% if recipe.stats %}
+                                        <small class="text-muted">
+                                            <i class="bi bi-star-fill"></i> {{ recipe.stats.average_rating|round(1) }}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 
+                You haven't favorited any recipes yet. 
+                Browse <a href="{{ url_for('recipe_list') }}" class="alert-link">all recipes</a> to find some favorites!
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
