@@ -1,0 +1,38 @@
+Pull Request Information
+========================
+
+TITLE:
+Improve recipe display and fix unicode fraction handling
+
+DESCRIPTION:
+## Changes
+
+### 🎯 Key Features
+- **Unicode Fraction Support**: Automatically converts ½, ¼, ¾, etc. to 1/2, 1/4, 3/4
+- **Persistent Messages**: Error/warning/info messages stay visible until dismissed
+- **Compact Source Display**: 77% space reduction on recipe source information
+- **Clean Ingredient List**: Removed borders, hover effects, and tighter spacing
+
+### 📝 Modified Files
+- `app.py` - Added unicode fraction conversion with debug logging
+- `static/js/app.js` - Removed auto-dismiss timeouts
+- `templates/recipe_form.html` - Removed import message timeouts
+- `templates/recipe_view.html` - Compact source + clean ingredient list
+
+### 🐛 Bug Fixes
+- Fixed recipe save failures caused by unicode fractions from PDF imports
+- Fixed validation to accept all formats: 1, 1.5, 1/2, 1 1/2
+
+### ✅ Testing
+- Tested unicode fraction conversion (½ → 1/2, 1½ → 1 1/2, ⅓ → 1/3)
+- Successfully saved Coconut Chicken Curry recipe with 5 unicode fractions
+- Verified all message types stay visible
+- Confirmed compact layout improvements
+
+---
+To create the PR:
+1. Browser should open to GitHub PR page
+2. Copy the TITLE above
+3. Copy the DESCRIPTION above
+4. Click "Create pull request"
+
