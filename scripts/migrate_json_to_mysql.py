@@ -82,18 +82,26 @@ def migrate_recipes(default_user_id=None):
             import bcrypt
             password_hash = bcrypt.hashpw('migration123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             
-            cursor.execute("""
-                INSERT INTO users (username, email, password_hash, display_name, email_verified)
-                VALUES (%s, %s, %s, %s, %s)
-            """, ('admin', 'admin@recipe-editor.local', password_hash, 'Administrator', True))
-            default_user_id = cursor.lastrowid
-            
-            # Create user preferences and stats
-            cursor.execute("INSERT INTO user_preferences (user_id) VALUES (%s)", (default_user_id,))
-            cursor.execute("INSERT INTO user_stats (user_id) VALUES (%s)", (default_user_id,))
-            
-            print(f"✓ Created user 'admin' (ID: {default_user_id})")
-            print(f"  Default password: migration123 (CHANGE THIS!)")
+            try:
+                cursor.execute("""
+                    INSERT INTO users (username, email, password_hash, display_name, email_verified)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, ('admin', 'admin@recipe-editor.local', password_hash, 'Administrator', True))
+                default_user_id = cursor.lastrowid
+                
+                # Create user preferences and stats
+                cursor.execute("INSERT INTO user_preferences (user_id) VALUES (%s)", (default_user_id,))
+                cursor.execute("INSERT INTO user_stats (user_id) VALUES (%s)", (default_user_id,))
+                
+                print(f"✓ Created user 'admin' (ID: {default_user_id})")
+                print(f"  Default password: migration123 (CHANGE THIS!)")
+            except Error as e:
+                if e.errno == 1062:  # Duplicate entry
+                    print("✓ Admin user already exists, using existing user")
+                    cursor.execute("SELECT id FROM users WHERE username = 'admin'")
+                    default_user_id = cursor.fetchone()[0]
+                else:
+                    raise
         
         # Get JSON recipe files
         recipes_dir = Path('data/recipes')
@@ -155,7 +163,7 @@ def migrate_recipes(default_user_id=None):
                     # Insert recipe-ingredient relationship
                     cursor.execute("""
                         INSERT INTO recipe_ingredients
-                        (recipe_id, ingredient_id, amount, unit, sort_order)
+                        (recipe_id, ingredient_id, amount, unit, order_index)
                         VALUES (%s, %s, %s, %s, %s)
                     """, (
                         recipe_id,

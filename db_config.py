@@ -6,11 +6,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 
 # MySQL Configuration from environment variables
-MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
-MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 3306))
-MYSQL_USER = os.environ.get('MYSQL_USER', 'recipe_user')
-MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
-MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'recipe_editor')
+MYSQL_HOST = os.environ.get('RECIPE_DB_HOSTNAME', os.environ.get('MYSQL_HOST', 'localhost'))
+MYSQL_PORT = int(os.environ.get('RECIPE_DB_PORT', os.environ.get('MYSQL_PORT', 3306)))
+MYSQL_USER = os.environ.get('RECIPE_DB_USER_NAME', os.environ.get('MYSQL_USER', 'recipe_user'))
+MYSQL_PASSWORD = os.environ.get('RECIPE_DB_USER_PW', os.environ.get('MYSQL_PASSWORD', ''))
+MYSQL_DATABASE = os.environ.get('RECIPE_DB_DATABASE_NAME', os.environ.get('MYSQL_DATABASE', 'recipe_editor'))
 
 # SQLAlchemy Database URI
 SQLALCHEMY_DATABASE_URI = f"mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4"
