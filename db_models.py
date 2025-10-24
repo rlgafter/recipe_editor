@@ -13,6 +13,31 @@ db = SQLAlchemy()
 # USER MANAGEMENT
 # ============================================================================
 
+class UserType(db.Model):
+    """User type definitions with permissions."""
+    __tablename__ = 'user_types'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    display_name = db.Column(db.String(100), nullable=False)
+    description = db.Column(Text)
+    can_view_recipes = db.Column(db.Boolean, default=True)
+    can_create_recipes = db.Column(db.Boolean, default=False)
+    can_edit_all_recipes = db.Column(db.Boolean, default=False)
+    can_delete_all_recipes = db.Column(db.Boolean, default=False)
+    can_manage_users = db.Column(db.Boolean, default=False)
+    can_manage_system = db.Column(db.Boolean, default=False)
+    can_share_recipes = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    users = db.relationship('User', back_populates='user_type')
+    
+    def __repr__(self):
+        return f'<UserType {self.name}>'
+
+
 class User(UserMixin, db.Model):
     """User account model."""
     __tablename__ = 'users'
@@ -26,12 +51,14 @@ class User(UserMixin, db.Model):
     avatar_url = db.Column(db.String(500))
     email_verified = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
-    is_admin = db.Column(db.Boolean, default=False)
+    is_admin = db.Column(db.Boolean, default=False)  # Keep for backward compatibility
+    user_type_id = db.Column(db.Integer, db.ForeignKey('user_types.id'), default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     
     # Relationships
+    user_type = db.relationship('UserType', back_populates='users')
     recipes = db.relationship('Recipe', backref='owner', lazy='dynamic', cascade='all, delete-orphan')
     preferences = db.relationship('UserPreference', back_populates='user', uselist=False, cascade='all, delete-orphan')
     favorites = db.relationship('RecipeFavorite', back_populates='user', cascade='all, delete-orphan')
@@ -42,6 +69,51 @@ class User(UserMixin, db.Model):
     
     def __repr__(self):
         return f'<User {self.username}>'
+    
+    # Permission checking methods
+    def can_view_recipes(self):
+        """Check if user can view recipes."""
+        return self.user_type.can_view_recipes if self.user_type else False
+    
+    def can_create_recipes(self):
+        """Check if user can create recipes."""
+        return self.user_type.can_create_recipes if self.user_type else False
+    
+    def can_edit_recipe(self, recipe):
+        """Check if user can edit a specific recipe."""
+        if not self.user_type:
+            return False
+        # Admin can edit all recipes
+        if self.user_type.can_edit_all_recipes:
+            return True
+        # Others can edit their own recipes if they can create recipes
+        return self.user_type.can_create_recipes and recipe.user_id == self.id
+    
+    def can_delete_recipe(self, recipe):
+        """Check if user can delete a specific recipe."""
+        if not self.user_type:
+            return False
+        # Admin can delete all recipes
+        if self.user_type.can_delete_all_recipes:
+            return True
+        # Others can delete their own recipes if they can create recipes
+        return self.user_type.can_create_recipes and recipe.user_id == self.id
+    
+    def can_manage_users(self):
+        """Check if user can manage other users."""
+        return self.user_type.can_manage_users if self.user_type else False
+    
+    def can_manage_system(self):
+        """Check if user can manage system settings."""
+        return self.user_type.can_manage_system if self.user_type else False
+    
+    def can_share_recipes(self):
+        """Check if user can share recipes."""
+        return self.user_type.can_share_recipes if self.user_type else False
+    
+    def is_admin(self):
+        """Check if user is admin (backward compatibility)."""
+        return self.user_type.name == 'admin' if self.user_type else False
 
 
 class UserPreference(db.Model):

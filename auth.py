@@ -84,9 +84,16 @@ def authenticate_user(username_or_email: str, password: str) -> tuple[bool, Opti
     return True, user, ""
 
 
-def create_user(username: str, email: str, password: str, display_name: str = None) -> tuple[bool, Optional[User], str]:
+def create_user(username: str, email: str, password: str, display_name: str = None, user_type: str = 'unvalidated') -> tuple[bool, Optional[User], str]:
     """
     Create a new user account.
+    
+    Args:
+        username: Username
+        email: Email address
+        password: Password
+        display_name: Display name (optional)
+        user_type: User type ('unvalidated', 'validated', 'share_recipes', 'admin')
     
     Returns:
         (success, user, error_message)
@@ -112,13 +119,21 @@ def create_user(username: str, email: str, password: str, display_name: str = No
         return False, None, f"Email '{email}' already registered"
     
     try:
+        # Get user type
+        from db_models import UserType
+        user_type_obj = db.session.query(UserType).filter(UserType.name == user_type).first()
+        if not user_type_obj:
+            user_type_obj = db.session.query(UserType).filter(UserType.name == 'unvalidated').first()
+        
         # Create user
         user = User(
             username=username,
             email=email,
             password_hash=hash_password(password),
             display_name=display_name or username,
-            email_verified=True  # Auto-verify for now (can add email verification later)
+            user_type_id=user_type_obj.id,
+            email_verified=(user_type == 'validated'),  # Auto-verify validated users
+            is_admin=(user_type == 'admin')  # Set is_admin for backward compatibility
         )
         db.session.add(user)
         db.session.flush()
@@ -133,7 +148,7 @@ def create_user(username: str, email: str, password: str, display_name: str = No
         
         db.session.commit()
         
-        logger.info(f"Created new user: {username}")
+        logger.info(f"Created new user: {username} (type: {user_type})")
         return True, user, ""
         
     except Exception as e:
