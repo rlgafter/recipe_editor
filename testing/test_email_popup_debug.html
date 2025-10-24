@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Popup Debug Test</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        body { padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Email Popup Debug Test</h1>
+        
+        <div class="test-section">
+            <h3>1. Test RecipeEditor Object</h3>
+            <button class="btn btn-primary" onclick="testRecipeEditor()">Test RecipeEditor Object</button>
+            <div id="recipeEditorTest" class="mt-2"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Test Success Popup</h3>
+            <button class="btn btn-success" onclick="testSuccessPopup()">Test Success Popup</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Test Error Popup</h3>
+            <button class="btn btn-danger" onclick="testErrorPopup()">Test Error Popup</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. Test AJAX Simulation</h3>
+            <button class="btn btn-warning" onclick="testAjaxSimulation()">Simulate AJAX Response</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. Console Logs</h3>
+            <p>Open browser developer tools (F12) and check the Console tab for debug information.</p>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Load the app.js file -->
+    <script src="../static/js/app.js"></script>
+    
+    <script>
+        function testRecipeEditor() {
+            const result = document.getElementById('recipeEditorTest');
+            if (typeof RecipeEditor !== 'undefined') {
+                result.innerHTML = '<div class="alert alert-success">✅ RecipeEditor object is available</div>';
+                console.log('RecipeEditor object:', RecipeEditor);
+            } else {
+                result.innerHTML = '<div class="alert alert-danger">❌ RecipeEditor object is NOT available</div>';
+                console.error('RecipeEditor object is undefined');
+            }
+        }
+        
+        function testSuccessPopup() {
+            console.log('Testing success popup...');
+            if (typeof RecipeEditor !== 'undefined' && RecipeEditor.showEmailSentNotification) {
+                RecipeEditor.showEmailSentNotification(
+                    "John Doe",
+                    "john@example.com", 
+                    "This is a test message",
+                    "Chocolate Chip Cookies"
+                );
+                console.log('Success popup called');
+            } else {
+                console.error('RecipeEditor.showEmailSentNotification is not available');
+                alert('RecipeEditor.showEmailSentNotification is not available');
+            }
+        }
+        
+        function testErrorPopup() {
+            console.log('Testing error popup...');
+            if (typeof RecipeEditor !== 'undefined' && RecipeEditor.showEmailErrorNotification) {
+                RecipeEditor.showEmailErrorNotification(
+                    "SMTP server connection failed",
+                    "test@example.com"
+                );
+                console.log('Error popup called');
+            } else {
+                console.error('RecipeEditor.showEmailErrorNotification is not available');
+                alert('RecipeEditor.showEmailErrorNotification is not available');
+            }
+        }
+        
+        function testAjaxSimulation() {
+            console.log('Simulating AJAX response...');
+            
+            // Simulate the AJAX response handling from the template
+            const mockData = {
+                success: true,
+                message: 'Email sent successfully!',
+                recipient_name: 'Jane Doe',
+                recipient_email: 'jane@example.com',
+                custom_message: 'Check out this recipe!',
+                recipe_name: 'Chocolate Cake'
+            };
+            
+            console.log('Mock response data:', mockData);
+            
+            if (mockData.success) {
+                console.log('Showing success notification');
+                if (typeof RecipeEditor !== 'undefined' && RecipeEditor.showEmailSentNotification) {
+                    RecipeEditor.showEmailSentNotification(
+                        mockData.recipient_name,
+                        mockData.recipient_email,
+                        mockData.custom_message,
+                        mockData.recipe_name
+                    );
+                } else {
+                    console.error('RecipeEditor.showEmailSentNotification not available');
+                }
+            }
+        }
+        
+        // Auto-test on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, testing RecipeEditor availability...');
+            testRecipeEditor();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Popup Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-button { 
+            display: block; 
+            margin: 10px 0; 
+            padding: 10px 20px; 
+            font-size: 16px; 
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .test-button:hover { background: #0056b3; }
+        .success { background: #28a745; }
+        .error { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Simple Email Popup Test</h1>
+    
+    <p>This test verifies that the JavaScript popup functionality works correctly.</p>
+    
+    <button class="test-button success" onclick="testSuccessPopup()">
+        ✅ Test Success Popup
+    </button>
+    
+    <button class="test-button error" onclick="testErrorPopup()">
+        ❌ Test Error Popup
+    </button>
+    
+    <button class="test-button" onclick="testCustomPopup()">
+        📧 Test Custom Email Popup
+    </button>
+    
+    <script>
+        // Success popup function (matches the one in app.js)
+        function showEmailSentNotification(recipientName, recipientEmail, message, recipeName) {
+            const displayName = recipientName || 'Recipient';
+            const displayMessage = message || 'No custom message';
+            
+            const popupContent = `
+📧 EMAIL SENT SUCCESSFULLY!
+
+📬 TO: ${displayName} (${recipientEmail})
+🍽️ RECIPE: ${recipeName}
+💬 MESSAGE: "${displayMessage}"
+
+✅ The recipe has been sent to the recipient.
+            `.trim();
+            
+            alert(popupContent);
+        }
+        
+        // Error popup function (matches the one in app.js)
+        function showEmailErrorNotification(errorMessage, recipientEmail) {
+            const popupContent = `
+❌ EMAIL FAILED TO SEND
+
+📬 TO: ${recipientEmail}
+🚫 ERROR: ${errorMessage}
+
+Please check the email address and try again.
+            `.trim();
+            
+            alert(popupContent);
+        }
+        
+        function testSuccessPopup() {
+            showEmailSentNotification(
+                "John Doe",
+                "john@example.com",
+                "Check out this amazing recipe!",
+                "Chocolate Chip Cookies"
+            );
+        }
+        
+        function testErrorPopup() {
+            showEmailErrorNotification(
+                "SMTP server connection failed",
+                "test@example.com"
+            );
+        }
+        
+        function testCustomPopup() {
+            showEmailSentNotification(
+                "Jane Smith",
+                "jane.smith@company.com",
+                "This recipe is perfect for our dinner party next week!",
+                "Beef Wellington"
+            );
+        }
+    </script>
+</body>
+</html>

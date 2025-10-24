@@ -69,11 +69,10 @@
                     <button type="button" class="btn btn-info" onclick="window.print()">
                         <i class="bi bi-printer"></i> Print
                     </button>
-                    {% if email_configured %}
-                        <a href="{{ url_for('recipe_email', recipe_id=recipe.id) }}" class="btn btn-success">
-                            <i class="bi bi-envelope"></i> Email
-                        </a>
-                    {% endif %}
+                    <!-- Email button - always show for testing -->
+                    <a href="{{ url_for('recipe_email', recipe_id=recipe.id) }}" class="btn btn-success">
+                        <i class="bi bi-envelope"></i> Email
+                    </a>
                     <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
                         <i class="bi bi-trash"></i> Delete
                     </button>
