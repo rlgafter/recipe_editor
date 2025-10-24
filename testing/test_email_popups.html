@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Popup Test - Recipe Editor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="mb-4">📧 Email Popup Test - Recipe Editor</h1>
+        
+        <div class="test-section">
+            <h3>Success Notifications</h3>
+            <p>Test the detailed email sent popup with different scenarios:</p>
+            
+            <button class="btn btn-success test-button" onclick="testSuccessBasic()">
+                Basic Success (No Name)
+            </button>
+            
+            <button class="btn btn-success test-button" onclick="testSuccessWithName()">
+                Success with Name
+            </button>
+            
+            <button class="btn btn-success test-button" onclick="testSuccessWithMessage()">
+                Success with Long Message
+            </button>
+            
+            <button class="btn btn-success test-button" onclick="testSuccessComplete()">
+                Complete Success (All Fields)
+            </button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Error Notifications</h3>
+            <p>Test the email error popup with different error scenarios:</p>
+            
+            <button class="btn btn-danger test-button" onclick="testErrorBasic()">
+                Basic Error
+            </button>
+            
+            <button class="btn btn-danger test-button" onclick="testErrorSMTP()">
+                SMTP Error
+            </button>
+            
+            <button class="btn btn-danger test-button" onclick="testErrorNetwork()">
+                Network Error
+            </button>
+            
+            <button class="btn btn-danger test-button" onclick="testErrorLong()">
+                Long Error Message
+            </button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Multiple Notifications</h3>
+            <p>Test multiple popups to see how they stack:</p>
+            
+            <button class="btn btn-warning test-button" onclick="testMultiple()">
+                Show Multiple Popups
+            </button>
+            
+            <button class="btn btn-info test-button" onclick="clearAll()">
+                Clear All Popups
+            </button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Real Recipe Scenarios</h3>
+            <p>Test with realistic recipe data:</p>
+            
+            <button class="btn btn-primary test-button" onclick="testRealRecipe()">
+                Chocolate Chip Cookies
+            </button>
+            
+            <button class="btn btn-primary test-button" onclick="testRealRecipe2()">
+                Spaghetti Carbonara
+            </button>
+        </div>
+    </div>
+
+    <!-- Include the Recipe Editor JavaScript -->
+    <script src="/static/js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Test functions for different scenarios
+        
+        function testSuccessBasic() {
+            RecipeEditor.showEmailSentNotification(
+                '', // No name
+                'john@example.com',
+                '', // No message
+                'Chocolate Chip Cookies'
+            );
+        }
+        
+        function testSuccessWithName() {
+            RecipeEditor.showEmailSentNotification(
+                'John Doe',
+                'john.doe@example.com',
+                'Hope you enjoy this recipe!',
+                'Grandma\'s Apple Pie'
+            );
+        }
+        
+        function testSuccessWithMessage() {
+            RecipeEditor.showEmailSentNotification(
+                'Sarah Johnson',
+                'sarah.j@company.com',
+                'This is a very long message that should be truncated in the popup to show how the system handles lengthy custom messages from users who like to write detailed notes.',
+                'Authentic Italian Pasta'
+            );
+        }
+        
+        function testSuccessComplete() {
+            RecipeEditor.showEmailSentNotification(
+                'Michael Chen',
+                'michael.chen@email.com',
+                'Perfect for dinner tonight! Let me know how it turns out.',
+                'Beef Wellington with Red Wine Sauce'
+            );
+        }
+        
+        function testErrorBasic() {
+            RecipeEditor.showEmailErrorNotification(
+                'Invalid email address',
+                'invalid-email'
+            );
+        }
+        
+        function testErrorSMTP() {
+            RecipeEditor.showEmailErrorNotification(
+                'SMTP authentication failed. Check your username and password.',
+                'recipient@example.com'
+            );
+        }
+        
+        function testErrorNetwork() {
+            RecipeEditor.showEmailErrorNotification(
+                'Network error occurred',
+                'user@domain.com'
+            );
+        }
+        
+        function testErrorLong() {
+            RecipeEditor.showEmailErrorNotification(
+                'SMTP server connection timeout after 30 seconds. Please check your internet connection and try again. If the problem persists, contact your system administrator.',
+                'long.error@example.com'
+            );
+        }
+        
+        function testMultiple() {
+            // Show multiple notifications quickly
+            RecipeEditor.showEmailSentNotification('Alice', 'alice@test.com', 'First email', 'Recipe 1');
+            setTimeout(() => {
+                RecipeEditor.showEmailSentNotification('Bob', 'bob@test.com', 'Second email', 'Recipe 2');
+            }, 500);
+            setTimeout(() => {
+                RecipeEditor.showEmailErrorNotification('Third email failed', 'charlie@test.com');
+            }, 1000);
+        }
+        
+        function clearAll() {
+            // Remove all toast notifications
+            const toasts = document.querySelectorAll('.toast');
+            toasts.forEach(toast => {
+                const bsToast = bootstrap.Toast.getInstance(toast);
+                if (bsToast) {
+                    bsToast.hide();
+                }
+            });
+        }
+        
+        function testRealRecipe() {
+            RecipeEditor.showEmailSentNotification(
+                'Mom',
+                'mom@family.com',
+                'Here\'s that chocolate chip cookie recipe you asked for! These are the ones I made for your birthday last year.',
+                'Perfect Chocolate Chip Cookies'
+            );
+        }
+        
+        function testRealRecipe2() {
+            RecipeEditor.showEmailSentNotification(
+                'Chef Marco',
+                'marco@restaurant.com',
+                'Buon appetito! This is the authentic carbonara recipe from my grandmother in Rome.',
+                'Spaghetti Carbonara Classica'
+            );
+        }
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Email popup test page loaded');
+            console.log('RecipeEditor functions available:', Object.keys(RecipeEditor));
+        });
+    </script>
+</body>
+</html>

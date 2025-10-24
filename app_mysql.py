@@ -470,16 +470,30 @@ def recipe_email(recipe_id):
             # Log the email
             storage.log_email_share(recipe_id, current_user.id, recipient_email, recipient_name, custom_message)
             
-            flash(f'Recipe sent successfully to {recipient_email}!', 'success')
-            return redirect(url_for('recipe_view', recipe_id=recipe_id))
+            # Return JSON response for AJAX handling with detailed popup
+            return jsonify({
+                'success': True,
+                'message': 'Email sent successfully!',
+                'recipient_name': recipient_name,
+                'recipient_email': recipient_email,
+                'custom_message': custom_message,
+                'recipe_name': recipe.name
+            })
         else:
-            flash(f'Error sending email: {error_msg}', 'error')
-            return render_template('recipe_email.html', recipe=recipe), 500
+            # Return JSON response for AJAX handling with error popup
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'recipient_email': recipient_email
+            }), 500
     
     except Exception as e:
         app.logger.error(f"Error emailing recipe: {str(e)}")
-        flash('Error sending email', 'error')
-        return render_template('recipe_email.html', recipe=recipe), 500
+        return jsonify({
+            'success': False,
+            'error': f'Error sending email: {str(e)}',
+            'recipient_email': recipient_email
+        }), 500
 
 
 # ============================================================================

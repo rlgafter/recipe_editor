@@ -73,7 +73,7 @@
                     </div>
                     
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-success btn-lg">
+                        <button type="submit" class="btn btn-success btn-lg" id="sendEmailBtn">
                             <i class="bi bi-send"></i> Send Email
                         </button>
                         <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}" 
@@ -86,5 +86,66 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const sendBtn = document.getElementById('sendEmailBtn');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const formData = new FormData(form);
+        const recipientEmail = formData.get('recipient_email');
+        const recipientName = formData.get('recipient_name');
+        const message = formData.get('message');
+        
+        // Set loading state
+        RecipeEditor.setButtonLoading(sendBtn, true);
+        
+        // Send AJAX request
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success popup with details
+                RecipeEditor.showEmailSentNotification(
+                    data.recipient_name,
+                    data.recipient_email,
+                    data.custom_message,
+                    data.recipe_name
+                );
+                
+                // Reset form
+                form.reset();
+            } else {
+                // Show error popup
+                RecipeEditor.showEmailErrorNotification(
+                    data.error,
+                    data.recipient_email
+                );
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            RecipeEditor.showEmailErrorNotification(
+                'Network error occurred',
+                recipientEmail
+            );
+        })
+        .finally(() => {
+            // Reset loading state
+            RecipeEditor.setButtonLoading(sendBtn, false);
+        });
+    });
+});
+</script>
 {% endblock %}
 
