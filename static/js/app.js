@@ -241,6 +241,82 @@ function showToast(message, type = 'info') {
 }
 
 /**
+ * Show detailed email sent notification
+ */
+function showEmailSentNotification(recipientName, recipientEmail, message, recipeName) {
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-white bg-success border-0';
+    toast.setAttribute('role', 'alert');
+    toast.style.minWidth = '350px';
+    
+    const displayName = recipientName || 'Recipient';
+    const displayMessage = message ? `"${message.length > 50 ? message.substring(0, 50) + '...' : message}"` : 'No custom message';
+    
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-envelope-check-fill me-2"></i>
+                    <strong>Email Sent Successfully!</strong>
+                </div>
+                <div class="small">
+                    <div><strong>To:</strong> ${displayName} (${recipientEmail})</div>
+                    <div><strong>Recipe:</strong> ${recipeName}</div>
+                    <div><strong>Message:</strong> ${displayMessage}</div>
+                </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast, { autohide: false });
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+/**
+ * Show email error notification
+ */
+function showEmailErrorNotification(errorMessage, recipientEmail) {
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-white bg-danger border-0';
+    toast.setAttribute('role', 'alert');
+    toast.style.minWidth = '350px';
+    
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-envelope-x-fill me-2"></i>
+                    <strong>Email Failed to Send</strong>
+                </div>
+                <div class="small">
+                    <div><strong>To:</strong> ${recipientEmail}</div>
+                    <div><strong>Error:</strong> ${errorMessage}</div>
+                </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast, { autohide: false });
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+/**
  * Create toast container if it doesn't exist
  */
 function createToastContainer() {
@@ -308,6 +384,8 @@ window.RecipeEditor = {
     scrollToElement,
     copyToClipboard,
     showToast,
+    showEmailSentNotification,
+    showEmailErrorNotification,
     debounce,
     Storage
 };
