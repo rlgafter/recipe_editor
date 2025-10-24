@@ -14,52 +14,63 @@
         </h1>
         
         {% if not recipe and gemini_configured %}
-        <!-- Recipe Import Section -->
-        <div class="card shadow-sm mb-4" id="importSection">
-            <div class="card-body">
-                <h5 class="mb-3">
-                    <i class="bi bi-cloud-download"></i> Import Recipe
-                </h5>
-                <p class="text-muted">Drag and drop a file, paste a URL, or upload a file to import a recipe automatically.</p>
+        <!-- Compact Horizontal Import Section -->
+        <div class="card shadow-sm mb-3" id="importSection">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-cloud-download me-2 text-primary"></i>
+                    <h6 class="mb-0">Import Recipe</h6>
+                </div>
                 
-                <!-- URL Import -->
-                <div class="mb-3">
-                    <label for="importUrl" class="form-label">Import from URL</label>
-                    <div class="input-group">
-                        <input type="url" 
-                               class="form-control" 
-                               id="importUrl" 
-                               placeholder="https://example.com/recipe">
-                        <button type="button" class="btn btn-primary" id="importUrlBtn">
-                            <i class="bi bi-link"></i> Import
-                        </button>
+                <!-- Horizontal Import Layout -->
+                <div class="row g-2">
+                    <!-- URL Import -->
+                    <div class="col-md-6">
+                        <label for="importUrl" class="form-label small mb-1">From URL</label>
+                        <div class="input-group input-group-sm">
+                            <input type="url" 
+                                   class="form-control" 
+                                   id="importUrl" 
+                                   placeholder="https://example.com/recipe">
+                            <button type="button" class="btn btn-primary" id="importUrlBtn">
+                                <i class="bi bi-link"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- File Upload -->
+                    <div class="col-md-6">
+                        <label class="form-label small mb-1">From File</label>
+                        <div class="input-group input-group-sm">
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="importFile" 
+                                   accept=".txt,.text,.pdf">
+                            <button type="button" class="btn btn-outline-primary" id="selectFileBtn">
+                                <i class="bi bi-upload"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- File Upload / Drag & Drop -->
-                <div class="mb-3">
-                    <label class="form-label">Import from File (Text or PDF)</label>
-                    <div id="dropZone" class="border border-2 border-dashed rounded p-4 text-center" 
-                         style="cursor: pointer; background-color: #f8f9fa;">
-                        <i class="bi bi-cloud-upload fs-1 text-muted"></i>
-                        <p class="mb-2"><strong>Drag and drop a file here</strong></p>
-                        <p class="text-muted small mb-2">or</p>
-                        <button type="button" class="btn btn-outline-primary" id="selectFileBtn">
-                            <i class="bi bi-file-earmark-text"></i> Select File
-                        </button>
-                        <input type="file" id="importFile" class="d-none" accept=".txt,.text,.pdf">
-                        <p class="text-muted small mt-2 mb-0">Supported: .txt, .pdf</p>
+                <!-- Compact Drag & Drop Zone -->
+                <div class="mt-2">
+                    <div id="dropZone" class="border border-2 border-dashed rounded p-2 text-center" 
+                         style="cursor: pointer; background-color: #f8f9fa; min-height: 50px;">
+                        <i class="bi bi-cloud-upload text-muted me-1"></i>
+                        <span class="text-muted small">or drag & drop file here</span>
+                        <span class="text-muted small d-block">Supported: .txt, .pdf</span>
                     </div>
                 </div>
                 
                 <!-- Import Status -->
-                <div id="importStatus" class="d-none">
-                    <div class="alert alert-info" role="alert">
+                <div id="importStatus" class="d-none mt-2">
+                    <div class="alert alert-info py-2" role="alert">
                         <div class="d-flex align-items-center">
                             <div class="spinner-border spinner-border-sm me-2" role="status">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
-                            <span id="importStatusText">Importing recipe...</span>
+                            <span id="importStatusText" class="small">Importing recipe...</span>
                         </div>
                     </div>
                 </div>
