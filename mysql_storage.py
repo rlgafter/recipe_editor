@@ -52,13 +52,25 @@ class MySQLStorage:
         if not recipe:
             return None
         
-        # Permission check
+        # Permission check using user types
+        if not user_id:
+            # Unauthenticated - only public recipes
+            return recipe if recipe.visibility == 'public' else None
+        
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user or not user.user_type:
+            return None
+        
+        # Admin can see everything
+        if user.user_type.name == 'admin':
+            return recipe
+        
+        # Public recipes are visible to all authenticated users
         if recipe.visibility == 'public':
             return recipe
-        elif user_id and recipe.user_id == user_id:
-            return recipe
-        else:
-            return None  # No access
+        
+        # Users can see their own recipes
+        return recipe if recipe.user_id == user_id else None
     
     def get_all_recipes(self, user_id: Optional[int] = None) -> List[Recipe]:
         """
@@ -107,10 +119,17 @@ class MySQLStorage:
         Returns:
             Saved Recipe object
         """
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user or not user.user_type:
+            raise PermissionError("User not found or invalid user type")
+        
         if recipe_id:
             # Update existing
             recipe = self.get_recipe(recipe_id, user_id)
-            if not recipe or recipe.user_id != user_id:
+            if not recipe:
+                raise PermissionError("Recipe not found or access denied")
+            
+            if not user.can_edit_recipe(recipe):
                 raise PermissionError("Cannot edit this recipe")
             
             recipe.name = recipe_data['name']
@@ -129,6 +148,9 @@ class MySQLStorage:
                 self.db.delete(ri)
         else:
             # Create new
+            if not user.can_create_recipes():
+                raise PermissionError("Cannot create recipes")
+            
             recipe = Recipe(
                 user_id=user_id,
                 name=recipe_data['name'],
@@ -204,9 +226,15 @@ class MySQLStorage:
         Returns:
             True if deleted, False otherwise
         """
-        recipe = self.get_recipe(recipe_id, user_id)
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user or not user.user_type:
+            return False
         
-        if not recipe or recipe.user_id != user_id:
+        recipe = self.get_recipe(recipe_id, user_id)
+        if not recipe:
+            return False
+        
+        if not user.can_delete_recipe(recipe):
             return False
         
         self.db.delete(recipe)
