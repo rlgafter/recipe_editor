@@ -1,155 +1,61 @@
 {% extends "base.html" %}
 
-{% block title %}My Profile - Recipe Editor{% endblock %}
+{% block title %}Profile - Recipe Editor{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-lg-8 mx-auto">
-        <h1 class="mb-4">
-            <i class="bi bi-person-circle"></i> My Profile
-        </h1>
-        
-        <!-- Profile Information -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header header-dark">
-                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Profile Information</h5>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('auth_profile') }}">
-                    <input type="hidden" name="action" value="update_profile">
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Username</label>
-                            <input type="text" class="form-control" value="{{ current_user.username }}" disabled>
-                            <div class="form-text">
-                                <small>Username cannot be changed</small>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" value="{{ current_user.email }}" disabled>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="display_name" class="form-label">Display Name</label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="display_name" 
-                               name="display_name"
-                               value="{{ current_user.display_name or '' }}"
-                               maxlength="100">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="bio" class="form-label">Bio</label>
-                        <textarea class="form-control" 
-                                  id="bio" 
-                                  name="bio" 
-                                  rows="4"
-                                  placeholder="Tell us about yourself...">{{ current_user.bio or '' }}</textarea>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save"></i> Save Profile
-                    </button>
-                </form>
-            </div>
-        </div>
-        
-        <!-- Change Password -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header header-dark">
-                <h5 class="mb-0"><i class="bi bi-key"></i> Change Password</h5>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('auth_profile') }}" id="passwordForm">
-                    <input type="hidden" name="action" value="change_password">
-                    
-                    <div class="mb-3">
-                        <label for="current_password" class="form-label">Current Password</label>
-                        <input type="password" 
-                               class="form-control" 
-                               id="current_password" 
-                               name="current_password" 
-                               required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="new_password" class="form-label">New Password</label>
-                        <input type="password" 
-                               class="form-control" 
-                               id="new_password" 
-                               name="new_password" 
-                               required
-                               minlength="8">
-                        <div class="form-text">
-                            <small>At least 8 characters</small>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="new_password_confirm" class="form-label">Confirm New Password</label>
-                        <input type="password" 
-                               class="form-control" 
-                               id="new_password_confirm" 
-                               name="new_password_confirm" 
-                               required>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-secondary">
-                        <i class="bi bi-shield-check"></i> Change Password
-                    </button>
-                </form>
-            </div>
-        </div>
-        
-        <!-- Statistics -->
-        {% if current_user.stats %}
         <div class="card shadow-sm">
-            <div class="card-header header-dark-alt">
-                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Your Statistics</h5>
-            </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-md-3 mb-3">
-                        <h3 class="mb-0">{{ current_user.stats.recipe_count }}</h3>
-                        <small class="text-muted">Total Recipes</small>
+            <div class="card-body p-5">
+                <h1 class="text-center mb-4">
+                    <i class="bi bi-person-circle"></i> User Profile
+                </h1>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Username</h5>
+                        <p class="text-muted">{{ user.username }}</p>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <h3 class="mb-0">{{ current_user.stats.public_recipe_count }}</h3>
-                        <small class="text-muted">Public Recipes</small>
+                    <div class="col-md-6">
+                        <h5>Email</h5>
+                        <p class="text-muted">{{ user.email }}</p>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <h3 class="mb-0">{{ current_user.stats.collection_count }}</h3>
-                        <small class="text-muted">Collections</small>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Display Name</h5>
+                        <p class="text-muted">{{ user.display_name }}</p>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <h3 class="mb-0">{{ current_user.stats.total_recipe_views }}</h3>
-                        <small class="text-muted">Total Views</small>
+                    <div class="col-md-6">
+                        <h5>Account Status</h5>
+                        {% if user.status == 'verified' %}
+                            <span class="badge bg-success">Verified</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Unverified</span>
+                            <p class="text-muted mt-2">
+                                <small>Please check your email for verification instructions.</small>
+                            </p>
+                        {% endif %}
                     </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Member Since</h5>
+                        <p class="text-muted">{{ user.created_at[:8] if user.created_at else 'Unknown' }}</p>
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <div class="text-center">
+                    <a href="{{ url_for('recipe_list') }}" class="btn btn-primary">
+                        <i class="bi bi-arrow-left"></i> Back to Recipes
+                    </a>
                 </div>
             </div>
         </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}
-
-{% block extra_scripts %}
-<script>
-document.getElementById('passwordForm').addEventListener('submit', function(e) {
-    const newPassword = document.getElementById('new_password').value;
-    const confirm = document.getElementById('new_password_confirm').value;
-    
-    if (newPassword !== confirm) {
-        e.preventDefault();
-        alert('New passwords do not match!');
-        return false;
-    }
-});
-</script>
-{% endblock %}
-

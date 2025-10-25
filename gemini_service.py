@@ -9,8 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from PyPDF2 import PdfReader
 from io import BytesIO
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 

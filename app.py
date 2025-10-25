@@ -1,11 +1,14 @@
 """
 Recipe Editor - Main Flask Application
 """
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 import logging
 from logging.handlers import RotatingFileHandler
 import os
 import re
+import json
+import hashlib
+import secrets
 import config
 from models import Recipe, Ingredient
 from storage import storage
@@ -89,12 +92,19 @@ def recipe_view(recipe_id):
     
     app.logger.info(f"Viewing recipe {recipe_id}: {recipe.name}")
     
+    # Get submitter information
+    submitter = None
+    if recipe.user_id:
+        users = load_users()
+        submitter = users.get(recipe.user_id)
+    
     # Check if email is configured
     email_configured = email_service.is_configured()
     
     return render_template(
         'recipe_view.html',
         recipe=recipe,
+        submitter=submitter,
         email_configured=email_configured
     )
 
@@ -102,6 +112,16 @@ def recipe_view(recipe_id):
 @app.route('/recipe/new', methods=['GET', 'POST'])
 def recipe_new():
     """Create a new recipe."""
+    # Check if user is logged in and verified
+    user = get_current_user()
+    if not user:
+        flash('Please log in to create recipes.', 'info')
+        return redirect(url_for('auth_login'))
+    
+    if user.get('status') != 'verified':
+        flash('Please verify your email address to create recipes. Check your email for verification instructions.', 'warning')
+        return redirect(url_for('recipe_list'))
+    
     if request.method == 'GET':
         # Get all tags for selection
         all_tags = storage.get_all_tags()
@@ -112,6 +132,9 @@ def recipe_new():
     # POST - Create new recipe
     try:
         recipe = _parse_recipe_form(request.form)
+        
+        # Add user ID to recipe
+        recipe.user_id = user['id']
         
         # Validate recipe
         is_valid, errors = recipe.validate()
@@ -563,6 +586,228 @@ def _parse_recipe_form(form_data, recipe_id=None):
     )
     
     return recipe
+
+
+# ============================================================================
+# Authentication Routes
+# ============================================================================
+
+def hash_password(password):
+    """Hash a password using SHA-256 with salt."""
+    salt = secrets.token_hex(16)
+    return hashlib.sha256((password + salt).encode()).hexdigest() + ':' + salt
+
+def verify_password(password, password_hash):
+    """Verify a password against its hash."""
+    try:
+        hash_part, salt = password_hash.split(':')
+        return hashlib.sha256((password + salt).encode()).hexdigest() == hash_part
+    except:
+        return False
+
+def load_users():
+    """Load users from JSON file."""
+    users_file = os.path.join('data', 'users.json')
+    if os.path.exists(users_file):
+        with open(users_file, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_users(users):
+    """Save users to JSON file."""
+    users_file = os.path.join('data', 'users.json')
+    os.makedirs(os.path.dirname(users_file), exist_ok=True)
+    with open(users_file, 'w') as f:
+        json.dump(users, f, indent=2)
+
+def get_current_user():
+    """Get current logged-in user."""
+    if 'user_id' in session:
+        users = load_users()
+        user = users.get(session['user_id'])
+        if user:
+            user['id'] = session['user_id']
+        return user
+    return None
+
+def send_verification_email(email, display_name, verification_url):
+    """Send verification email to user."""
+    try:
+        if email_service.is_configured():
+            # Use the existing email service
+            subject = "Verify Your Recipe Editor Account"
+            body = f"""
+Hello {display_name},
+
+Welcome to Recipe Editor! Please verify your account by clicking the link below:
+
+{verification_url}
+
+If you didn't create this account, please ignore this email.
+
+Best regards,
+Recipe Editor Team
+            """
+            
+            email_service.send_email(email, subject, body)
+            app.logger.info(f"Verification email sent to {email}")
+        else:
+            # Log for testing when email is not configured
+            app.logger.info(f"VERIFICATION EMAIL (TEST MODE):")
+            app.logger.info(f"To: {email}")
+            app.logger.info(f"Subject: Verify Your Recipe Editor Account")
+            app.logger.info(f"Verification URL: {verification_url}")
+    except Exception as e:
+        app.logger.error(f"Error sending verification email: {e}")
+
+@app.route('/auth/login', methods=['GET', 'POST'])
+def auth_login():
+    """User login."""
+    if get_current_user():
+        return redirect(url_for('recipe_list'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        remember = request.form.get('remember') == 'on'
+        
+        users = load_users()
+        user = None
+        
+        # Find user by username or email
+        for user_id, user_data in users.items():
+            if user_data.get('username') == username or user_data.get('email') == username:
+                user = user_data
+                user['id'] = user_id
+                break
+        
+        if user and verify_password(password, user.get('password_hash', '')):
+            session['user_id'] = user['id']
+            session['user_status'] = user.get('status', 'unverified')
+            if remember:
+                session.permanent = True
+            flash(f'Welcome back, {user.get("display_name", user.get("username"))}!', 'success')
+            return redirect(url_for('recipe_list'))
+        else:
+            flash('Invalid username or password', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/auth/logout')
+def auth_logout():
+    """User logout."""
+    session.pop('user_id', None)
+    session.pop('user_status', None)
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('recipe_list'))
+
+@app.route('/auth/register', methods=['GET', 'POST'])
+def auth_register():
+    """User registration."""
+    if get_current_user():
+        return redirect(url_for('recipe_list'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        display_name = request.form.get('display_name', '').strip()
+        password = request.form.get('password', '')
+        password_confirm = request.form.get('password_confirm', '')
+        terms_accepted = request.form.get('terms_accepted') == 'on'
+        
+        # Validate
+        if password != password_confirm:
+            flash('Passwords do not match', 'error')
+            return render_template('register.html')
+        
+        if not terms_accepted:
+            flash('You must accept the terms of service to create an account', 'error')
+            return render_template('register.html')
+        
+        if len(password) < 8:
+            flash('Password must be at least 8 characters', 'error')
+            return render_template('register.html')
+        
+        if len(username) < 3:
+            flash('Username must be at least 3 characters', 'error')
+            return render_template('register.html')
+        
+        users = load_users()
+        
+        # Check if username exists
+        for user_data in users.values():
+            if user_data.get('username') == username:
+                flash(f'Username "{username}" already exists', 'error')
+                return render_template('register.html')
+            if user_data.get('email') == email:
+                flash(f'Email "{email}" already registered', 'error')
+                return render_template('register.html')
+        
+        # Create new user
+        user_id = secrets.token_hex(16)
+        verification_token = secrets.token_hex(32)
+        users[user_id] = {
+            'username': username,
+            'email': email,
+            'display_name': display_name or username,
+            'password_hash': hash_password(password),
+            'status': 'unverified',
+            'verification_token': verification_token,
+            'created_at': str(secrets.token_hex(8))  # Simple timestamp
+        }
+        
+        save_users(users)
+        
+        # Send verification email
+        verification_url = f"{request.url_root}auth/verify/{verification_token}"
+        send_verification_email(email, display_name or username, verification_url)
+        
+        # Auto-login
+        session['user_id'] = user_id
+        session['user_status'] = 'unverified'
+        flash(f'Account created! Please check your email ({email}) for verification instructions.', 'success')
+        return redirect(url_for('recipe_list'))
+    
+    return render_template('register.html')
+
+@app.route('/auth/verify/<token>')
+def auth_verify(token):
+    """Verify user account with token."""
+    users = load_users()
+    
+    # Find user with this verification token
+    user_id = None
+    for uid, user_data in users.items():
+        if user_data.get('verification_token') == token:
+            user_id = uid
+            break
+    
+    if user_id:
+        # Update user status to verified
+        users[user_id]['status'] = 'verified'
+        users[user_id].pop('verification_token', None)  # Remove token after use
+        save_users(users)
+        
+        # Update session if user is currently logged in
+        if session.get('user_id') == user_id:
+            session['user_status'] = 'verified'
+        
+        flash('Account verified successfully! You can now create and save recipes.', 'success')
+        app.logger.info(f"User {user_id} account verified")
+    else:
+        flash('Invalid or expired verification link.', 'error')
+    
+    return redirect(url_for('recipe_list'))
+
+@app.route('/auth/profile')
+def auth_profile():
+    """User profile page."""
+    user = get_current_user()
+    if not user:
+        flash('Please log in to view your profile', 'info')
+        return redirect(url_for('auth_login'))
+    
+    return render_template('profile.html', user=user)
 
 
 # ============================================================================

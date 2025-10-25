@@ -88,6 +88,20 @@
                                placeholder="Re-enter your password">
                     </div>
                     
+                    <!-- Terms of Service -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" 
+                                   class="form-check-input" 
+                                   id="terms_accepted" 
+                                   name="terms_accepted" 
+                                   required>
+                            <label class="form-check-label" for="terms_accepted">
+                                <strong>I accept the terms of service for this site</strong> <span class="text-danger">*</span>
+                            </label>
+                        </div>
+                    </div>
+                    
                     <!-- Submit Button -->
                     <div class="d-grid">
                         <button type="submit" class="btn btn-primary btn-lg">
@@ -113,14 +127,21 @@
 
 {% block extra_scripts %}
 <script>
-// Password confirmation validation
+// Form validation
 document.getElementById('registerForm').addEventListener('submit', function(e) {
     const password = document.getElementById('password').value;
     const confirm = document.getElementById('password_confirm').value;
+    const terms = document.getElementById('terms_accepted').checked;
     
     if (password !== confirm) {
         e.preventDefault();
         alert('Passwords do not match!');
+        return false;
+    }
+    
+    if (!terms) {
+        e.preventDefault();
+        alert('You must accept the terms of service to create an account.');
         return false;
     }
 });
