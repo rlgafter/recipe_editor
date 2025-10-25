@@ -14,22 +14,22 @@
                 <div class="row">
                     <div class="col-md-6">
                         <h5>Username</h5>
-                        <p class="text-muted">{{ user.username }}</p>
+                        <p class="text-muted">{{ current_user.username }}</p>
                     </div>
                     <div class="col-md-6">
                         <h5>Email</h5>
-                        <p class="text-muted">{{ user.email }}</p>
+                        <p class="text-muted">{{ current_user.email }}</p>
                     </div>
                 </div>
                 
                 <div class="row">
                     <div class="col-md-6">
                         <h5>Display Name</h5>
-                        <p class="text-muted">{{ user.display_name }}</p>
+                        <p class="text-muted">{{ current_user.display_name or current_user.username }}</p>
                     </div>
                     <div class="col-md-6">
                         <h5>Account Status</h5>
-                        {% if user.status == 'verified' %}
+                        {% if current_user.email_verified %}
                             <span class="badge bg-success">Verified</span>
                         {% else %}
                             <span class="badge bg-warning text-dark">Unverified</span>
@@ -43,17 +43,10 @@
                 <div class="row">
                     <div class="col-md-6">
                         <h5>Member Since</h5>
-                        <p class="text-muted">{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'Unknown' }}</p>
+                        <p class="text-muted">{{ current_user.created_at.strftime('%Y-%m-%d') if current_user.created_at else 'Unknown' }}</p>
                     </div>
                 </div>
                 
-                <hr class="my-4">
-                
-                <div class="text-center">
-                    <a href="{{ url_for('recipe_list') }}" class="btn btn-primary">
-                        <i class="bi bi-arrow-left"></i> Back to Recipes
-                    </a>
-                </div>
             </div>
         </div>
     </div>
