@@ -58,11 +58,11 @@ class MySQLStorage:
             return recipe if recipe.visibility == 'public' else None
         
         user = self.db.query(User).filter(User.id == user_id).first()
-        if not user or not user.user_type:
+        if not user:
             return None
         
         # Admin can see everything
-        if user.user_type.name == 'admin':
+        if user.is_admin:
             return recipe
         
         # Public recipes are visible to all authenticated users
@@ -120,8 +120,8 @@ class MySQLStorage:
             Saved Recipe object
         """
         user = self.db.query(User).filter(User.id == user_id).first()
-        if not user or not user.user_type:
-            raise PermissionError("User not found or invalid user type")
+        if not user:
+            raise PermissionError("User not found")
         
         if recipe_id:
             # Update existing
@@ -181,8 +181,8 @@ class MySQLStorage:
                 ingredient_id=ingredient.id,
                 amount=ing_data.get('amount', ''),
                 unit=ing_data.get('unit', ''),
-                preparation=ing_data.get('preparation', ''),
-                sort_order=i
+                notes=ing_data.get('notes', ''),
+                order_index=i
             )
             self.db.add(recipe_ing)
         
@@ -227,7 +227,7 @@ class MySQLStorage:
             True if deleted, False otherwise
         """
         user = self.db.query(User).filter(User.id == user_id).first()
-        if not user or not user.user_type:
+        if not user:
             return False
         
         recipe = self.get_recipe(recipe_id, user_id)

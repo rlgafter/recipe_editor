@@ -11,13 +11,33 @@ import hashlib
 import secrets
 import config
 from models import Recipe, Ingredient
-from storage import storage
+
+# Import storage based on configuration
+if config.STORAGE_BACKEND == 'mysql':
+    # Use MySQL backend
+    from db_models import db
+    from mysql_storage import MySQLStorage, init_storage
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = config.SECRET_KEY
+    app.config['SQLALCHEMY_DATABASE_URI'] = config.SQLALCHEMY_DATABASE_URI
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = config.SQLALCHEMY_TRACK_MODIFICATIONS
+    app.config['SQLALCHEMY_ECHO'] = config.SQLALCHEMY_ECHO
+    db.init_app(app)
+    # Initialize storage with MySQL
+    with app.app_context():
+        storage = init_storage(db.session)
+    logger_name = "Recipe Editor (MySQL)"
+else:
+    # Use JSON backend
+    from storage import storage
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = config.SECRET_KEY
+    logger_name = "Recipe Editor (JSON)"
+
 from email_service import email_service
 from gemini_service import gemini_service
 
-# Initialize Flask app
-app = Flask(__name__)
-app.config['SECRET_KEY'] = config.SECRET_KEY
+# Initialize Flask app (if not already done)
 
 # Configure logging
 if not os.path.exists(config.LOGS_DIR):
@@ -44,7 +64,7 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 logger.setLevel(logging.INFO)
 
-app.logger.info("Recipe Editor application starting")
+app.logger.info(f"{logger_name} application starting")
 
 
 # ============================================================================
@@ -69,8 +89,11 @@ def recipe_list():
     else:
         recipes = storage.get_all_recipes()
     
-    # Sort recipes by name
-    recipes.sort(key=lambda r: r.name.lower())
+    # Sort recipes by name (convert to list first if needed)
+    if hasattr(recipes, 'sort'):
+        recipes.sort(key=lambda r: r.name.lower())
+    else:
+        recipes = sorted(recipes, key=lambda r: r.name.lower())
     
     return render_template(
         'recipe_list.html',

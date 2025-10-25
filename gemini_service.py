@@ -9,7 +9,15 @@ import requests
 from bs4 import BeautifulSoup
 from PyPDF2 import PdfReader
 from io import BytesIO
-import google.generativeai as genai
+
+# Try to import google.generativeai, but handle gracefully if not available
+try:
+    import google.generativeai as genai
+    HAS_GEMINI = True
+except ImportError:
+    genai = None
+    HAS_GEMINI = False
+    logging.getLogger(__name__).warning("google.generativeai not installed. Gemini features will be disabled.")
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +27,11 @@ class GeminiRecipeExtractor:
     
     def __init__(self):
         """Initialize the Gemini client."""
+        if not HAS_GEMINI:
+            logger.warning("google.generativeai module not available")
+            self.client = None
+            return
+        
         self.api_key = os.environ.get('GOOGLE_GEMINI_API_KEY')
         if not self.api_key:
             logger.warning("GOOGLE_GEMINI_API_KEY not set in environment")

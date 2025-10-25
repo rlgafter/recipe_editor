@@ -13,29 +13,7 @@ db = SQLAlchemy()
 # USER MANAGEMENT
 # ============================================================================
 
-class UserType(db.Model):
-    """User type definitions with permissions."""
-    __tablename__ = 'user_types'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)
-    display_name = db.Column(db.String(100), nullable=False)
-    description = db.Column(Text)
-    can_view_recipes = db.Column(db.Boolean, default=True)
-    can_create_recipes = db.Column(db.Boolean, default=False)
-    can_edit_all_recipes = db.Column(db.Boolean, default=False)
-    can_delete_all_recipes = db.Column(db.Boolean, default=False)
-    can_manage_users = db.Column(db.Boolean, default=False)
-    can_manage_system = db.Column(db.Boolean, default=False)
-    can_share_recipes = db.Column(db.Boolean, default=False)
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    users = db.relationship('User', back_populates='user_type')
-    
-    def __repr__(self):
-        return f'<UserType {self.name}>'
+# UserType model removed - using simplified permission system with is_admin flag
 
 
 class User(UserMixin, db.Model):
@@ -52,13 +30,11 @@ class User(UserMixin, db.Model):
     email_verified = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     is_admin = db.Column(db.Boolean, default=False)  # Keep for backward compatibility
-    user_type_id = db.Column(db.Integer, db.ForeignKey('user_types.id'), default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     
-    # Relationships
-    user_type = db.relationship('UserType', back_populates='users')
+    # Relationships (simplified - no user_type relationship)
     recipes = db.relationship('Recipe', backref='owner', lazy='dynamic', cascade='all, delete-orphan')
     preferences = db.relationship('UserPreference', back_populates='user', uselist=False, cascade='all, delete-orphan')
     favorites = db.relationship('RecipeFavorite', back_populates='user', cascade='all, delete-orphan')
@@ -70,50 +46,42 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
     
-    # Permission checking methods
+    # Permission checking methods (simplified)
     def can_view_recipes(self):
         """Check if user can view recipes."""
-        return self.user_type.can_view_recipes if self.user_type else False
+        return self.is_active  # All active users can view
     
     def can_create_recipes(self):
         """Check if user can create recipes."""
-        return self.user_type.can_create_recipes if self.user_type else False
+        return self.is_active  # All active users can create
     
     def can_edit_recipe(self, recipe):
         """Check if user can edit a specific recipe."""
-        if not self.user_type:
-            return False
         # Admin can edit all recipes
-        if self.user_type.can_edit_all_recipes:
+        if self.is_admin:
             return True
-        # Others can edit their own recipes if they can create recipes
-        return self.user_type.can_create_recipes and recipe.user_id == self.id
+        # Users can edit their own recipes
+        return recipe.user_id == self.id
     
     def can_delete_recipe(self, recipe):
         """Check if user can delete a specific recipe."""
-        if not self.user_type:
-            return False
         # Admin can delete all recipes
-        if self.user_type.can_delete_all_recipes:
+        if self.is_admin:
             return True
-        # Others can delete their own recipes if they can create recipes
-        return self.user_type.can_create_recipes and recipe.user_id == self.id
+        # Users can delete their own recipes
+        return recipe.user_id == self.id
     
     def can_manage_users(self):
         """Check if user can manage other users."""
-        return self.user_type.can_manage_users if self.user_type else False
+        return self.is_admin
     
     def can_manage_system(self):
         """Check if user can manage system settings."""
-        return self.user_type.can_manage_system if self.user_type else False
+        return self.is_admin
     
     def can_share_recipes(self):
         """Check if user can share recipes."""
-        return self.user_type.can_share_recipes if self.user_type else False
-    
-    def is_admin(self):
-        """Check if user is admin (backward compatibility)."""
-        return self.user_type.name == 'admin' if self.user_type else False
+        return self.is_active  # All active users can share
 
 
 class UserPreference(db.Model):
@@ -188,25 +156,27 @@ class RecipeIngredient(db.Model):
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id', ondelete='CASCADE'), nullable=False)
     ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id', ondelete='RESTRICT'), nullable=False)
     amount = db.Column(db.String(50))
-    unit = db.Column(db.String(50))
-    preparation = db.Column(db.String(200))
-    is_optional = db.Column(db.Boolean, default=False)
+    unit = db.Column(db.String(20))  # Changed to match DB schema
     notes = db.Column(Text)
-    sort_order = db.Column(db.Integer, default=0)
-    ingredient_group = db.Column(db.String(100))
+    order_index = db.Column(db.Integer, default=0)  # Changed from sort_order to match DB
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     recipe = db.relationship('Recipe', back_populates='recipe_ingredients')
     ingredient = db.relationship('Ingredient', back_populates='recipe_ingredients')
+    
+    @property
+    def description(self):
+        """Get ingredient name for template compatibility."""
+        return self.ingredient.name if self.ingredient else ''
     
     def to_dict(self):
         """Convert to dictionary for JSON serialization."""
         return {
             'amount': self.amount or '',
             'unit': self.unit or '',
-            'description': self.ingredient.name,
-            'preparation': self.preparation or '',
-            'is_optional': self.is_optional,
+            'description': self.description,
             'notes': self.notes or ''
         }
 
@@ -257,7 +227,7 @@ class Recipe(db.Model):
     # Relationships
     recipe_ingredients = db.relationship('RecipeIngredient', back_populates='recipe', 
                                         cascade='all, delete-orphan', 
-                                        order_by='RecipeIngredient.sort_order')
+                                        order_by='RecipeIngredient.order_index')
     source = db.relationship('RecipeSource', back_populates='recipe', uselist=False, cascade='all, delete-orphan')
     photos = db.relationship('RecipePhoto', back_populates='recipe', cascade='all, delete-orphan')
     tags = db.relationship('Tag', secondary='recipe_tags', back_populates='recipes')
@@ -271,6 +241,11 @@ class Recipe(db.Model):
         prep = self.prep_time or 0
         cook = self.cook_time or 0
         return prep + cook
+    
+    @property
+    def ingredients(self):
+        """Alias for recipe_ingredients to maintain compatibility with templates."""
+        return self.recipe_ingredients
     
     def __repr__(self):
         return f'<Recipe {self.name}>'

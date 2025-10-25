@@ -168,6 +168,143 @@ def auth_profile():
     return render_template('profile.html')
 
 
+@app.route('/auth/forgot-password', methods=['GET', 'POST'])
+def auth_forgot_password():
+    """Forgot password - request password reset."""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        
+        if not username:
+            flash('Please enter your username', 'error')
+            return render_template('forgot_password.html')
+        
+        # Find user by username
+        from db_models import User, PasswordResetToken
+        user = db.session.query(User).filter(User.username == username).first()
+        
+        if user:
+            # Create password reset token (expires in 1 hour)
+            import secrets
+            from datetime import datetime, timedelta
+            token = secrets.token_urlsafe(32)
+            expires_at = datetime.utcnow() + timedelta(hours=1)
+            
+            # Invalidate old tokens for this user
+            db.session.query(PasswordResetToken).filter(
+                PasswordResetToken.user_id == user.id,
+                PasswordResetToken.used == False
+            ).update({PasswordResetToken.used: True})
+            
+            # Create new token
+            reset_token = PasswordResetToken(
+                user_id=user.id,
+                token=token,
+                expires_at=expires_at
+            )
+            db.session.add(reset_token)
+            db.session.commit()
+            
+            # Send password reset email
+            success, error_msg = email_service.send_password_reset_email(
+                user.email,
+                user.display_name or user.username,
+                token
+            )
+            
+            if success:
+                app.logger.info(f"Password reset email sent to {user.email}")
+        
+        # Always show success message (security - don't reveal if user exists)
+        return render_template(
+            'recovery_confirmation.html',
+            page_title='Email Sent',
+            confirmation_message='If an account exists with that username, a password reset link has been sent to the registered email address.',
+            recovery_type='password'
+        )
+    
+    return render_template('forgot_password.html')
+
+
+@app.route('/auth/forgot-username', methods=['GET', 'POST'])
+def auth_forgot_username():
+    """Forgot username - recover username via email."""
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        
+        if not email:
+            flash('Please enter your email address', 'error')
+            return render_template('forgot_username.html')
+        
+        # Find user by email
+        from db_models import User
+        user = db.session.query(User).filter(User.email == email).first()
+        
+        if user:
+            # Send username recovery email
+            success, error_msg = email_service.send_username_recovery_email(
+                user.email,
+                user.username
+            )
+            
+            if success:
+                app.logger.info(f"Username recovery email sent to {email}")
+        
+        # Always show success message (security - don't reveal if user exists)
+        return render_template(
+            'recovery_confirmation.html',
+            page_title='Email Sent',
+            confirmation_message='If an account exists with that email address, your username has been sent to that email.',
+            recovery_type='username'
+        )
+    
+    return render_template('forgot_username.html')
+
+
+@app.route('/auth/reset-password/<token>', methods=['GET', 'POST'])
+def auth_reset_password(token):
+    """Reset password using token."""
+    from db_models import User, PasswordResetToken
+    from datetime import datetime
+    
+    # Validate token
+    reset_token = db.session.query(PasswordResetToken).filter(
+        PasswordResetToken.token == token,
+        PasswordResetToken.used == False,
+        PasswordResetToken.expires_at > datetime.utcnow()
+    ).first()
+    
+    if not reset_token:
+        flash('Invalid or expired password reset link. Please request a new one.', 'error')
+        return redirect(url_for('auth_forgot_password'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        # Validate passwords
+        if not password or len(password) < 8:
+            flash('Password must be at least 8 characters long', 'error')
+            return render_template('reset_password.html', token=token)
+        
+        if password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template('reset_password.html', token=token)
+        
+        # Update password
+        user = db.session.query(User).filter(User.id == reset_token.user_id).first()
+        if user:
+            from werkzeug.security import generate_password_hash
+            user.password_hash = generate_password_hash(password)
+            reset_token.used = True
+            db.session.commit()
+            
+            app.logger.info(f"Password reset successful for user {user.username}")
+            flash('Your password has been reset successfully. Please log in with your new password.', 'success')
+            return redirect(url_for('auth_login'))
+    
+    return render_template('reset_password.html', token=token)
+
+
 # ============================================================================
 # Recipe Routes (Multi-User)
 # ============================================================================
@@ -218,11 +355,16 @@ def recipe_view(recipe_id):
     if current_user.is_authenticated:
         is_favorited = storage.is_favorited(current_user.id, recipe_id)
     
+    # Get submitter information
+    from db_models import User
+    submitter = db.session.query(User).filter(User.id == recipe.user_id).first()
+    
     email_configured = email_service.is_configured()
     
     return render_template(
         'recipe_view.html',
         recipe=recipe,
+        submitter=submitter,
         is_favorited=is_favorited,
         email_configured=email_configured
     )

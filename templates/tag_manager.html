@@ -30,10 +30,10 @@
                                             <span class="badge bg-primary">{{ tag_name }}</span>
                                         </td>
                                         <td class="text-center">
-                                            <span class="badge bg-secondary">{{ tag.recipe_count() }}</span>
+                                            <span class="badge bg-secondary">{{ tag.recipe_count if tag.recipe_count is defined else 0 }}</span>
                                         </td>
                                         <td class="text-center">
-                                            {% if tag.recipe_count() == 0 %}
+                                            {% if (tag.recipe_count if tag.recipe_count is defined else 0) == 0 %}
                                                 <button type="button" 
                                                         class="btn btn-sm btn-warning" 
                                                         data-bs-toggle="modal" 

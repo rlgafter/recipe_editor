@@ -37,11 +37,11 @@
         <div class="mb-3" style="padding: 8px 0; font-size: 0.9em;">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    {% if recipe.source and recipe.source.name %}
+                    {% if recipe.source and recipe.source.source_name %}
                         <span class="text-muted"><strong>Source:</strong></span> 
-                        {% if recipe.source.url %}
-                            <a href="{{ recipe.source.url }}" target="_blank" class="text-decoration-none">
-                                <span class="text-muted">{{ recipe.source.name }}</span>
+                        {% if recipe.source.source_url %}
+                            <a href="{{ recipe.source.source_url }}" target="_blank" class="text-decoration-none">
+                                <span class="text-muted">{{ recipe.source.source_name }}</span>
                                 {% if recipe.source.author %}
                                     <span class="text-muted">by {{ recipe.source.author }}</span>
                                 {% endif %}
@@ -50,7 +50,7 @@
                                 {% endif %}
                             </a>
                         {% else %}
-                            <span class="text-muted">{{ recipe.source.name }}</span>
+                            <span class="text-muted">{{ recipe.source.source_name }}</span>
                             {% if recipe.source.author %}
                                 <span class="text-muted">by {{ recipe.source.author }}</span>
                             {% endif %}
@@ -134,7 +134,7 @@
                 <!-- Recipe Info -->
                 <div class="text-muted mt-4 no-print">
                     <small>
-                        Created: {{ recipe.created_at[:10] }} | Updated: {{ recipe.updated_at[:10] }}
+                        Created: {{ recipe.created_at.strftime('%Y-%m-%d') if recipe.created_at else 'Unknown' }} | Updated: {{ recipe.updated_at.strftime('%Y-%m-%d') if recipe.updated_at else 'Unknown' }}
                     </small>
                 </div>
             </div>

@@ -40,7 +40,7 @@
                                            id="tag_{{ tag_name }}"
                                            {% if tag_name in selected_tags %}checked{% endif %}>
                                     <label class="form-check-label" for="tag_{{ tag_name }}">
-                                        {{ tag_name }} <span class="badge bg-secondary">{{ tag.recipe_count() }}</span>
+                                        {{ tag_name }} <span class="badge bg-secondary">{{ tag.recipe_count if tag.recipe_count is defined else 0 }}</span>
                                     </label>
                                 </div>
                             {% endfor %}
@@ -93,10 +93,21 @@
                                     </a>
                                 </h5>
                                 
-                                {% if recipe.source and recipe.source.name %}
+                                {% if recipe.source and recipe.source.source_name %}
                                     <p class="card-text mb-1">
                                         <small class="text-muted">
-                                            <i class="bi bi-book"></i> {{ recipe.source.name }}
+                                            <i class="bi bi-book"></i> {{ recipe.source.source_name }}
+                                            {% if recipe.source.author %}
+                                                by {{ recipe.source.author }}
+                                            {% endif %}
+                                        </small>
+                                    </p>
+                                {% endif %}
+                                
+                                {% if recipe.owner %}
+                                    <p class="card-text mb-1">
+                                        <small class="text-muted">
+                                            <i class="bi bi-person"></i> {{ recipe.owner.display_name or recipe.owner.username }}
                                         </small>
                                     </p>
                                 {% endif %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Recovery Email Sent - Recipe Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-body p-5 text-center">
+                <div class="mb-4">
+                    <i class="bi bi-envelope-check" style="font-size: 4rem; color: #28a745;"></i>
+                </div>
+                
+                <h1 class="mb-4">{{ page_title }}</h1>
+                
+                <p class="text-muted mb-4">
+                    {{ confirmation_message }}
+                </p>
+                
+                {% if recovery_type == 'password' %}
+                    <div class="alert alert-info">
+                        <strong>Important:</strong> The password reset link will expire in 1 hour for security reasons.
+                    </div>
+                {% endif %}
+                
+                <div class="alert alert-warning">
+                    <strong>Didn't receive the email?</strong> Please check your spam folder or try again in a few minutes.
+                </div>
+                
+                <!-- Links -->
+                <hr class="my-4">
+                
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('auth_login') }}" class="btn btn-primary">
+                        <i class="bi bi-arrow-left"></i> Back to Login
+                    </a>
+                    
+                    {% if recovery_type == 'password' %}
+                        <a href="{{ url_for('auth_forgot_password') }}" class="btn btn-outline-secondary">
+                            Resend Reset Link
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('auth_forgot_username') }}" class="btn btn-outline-secondary">
+                            Try Again
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

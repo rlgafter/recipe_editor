@@ -30,11 +30,12 @@ SENDER_NAME = os.environ.get('SENDER_NAME', 'Recipe Editor')
 STORAGE_BACKEND = os.environ.get('STORAGE_BACKEND', 'json')  # 'json' or 'mysql'
 
 # MySQL Configuration (if using MySQL backend)
-MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
-MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 3306))
-MYSQL_USER = os.environ.get('MYSQL_USER', 'recipe_user')
-MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
-MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'recipe_editor')
+# Support both naming conventions
+MYSQL_HOST = os.environ.get('MYSQL_HOST') or os.environ.get('RECIPE_DB_HOSTNAME', 'localhost')
+MYSQL_PORT = int(os.environ.get('MYSQL_PORT') or os.environ.get('RECIPE_DB_PORT', '3306'))
+MYSQL_USER = os.environ.get('MYSQL_USER') or os.environ.get('RECIPE_DB_USER_NAME', 'recipe_user')
+MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD') or os.environ.get('RECIPE_DB_USER_PW', '')
+MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE') or os.environ.get('RECIPE_DB_DATABASE_NAME', 'recipe_editor')
 
 # SQLAlchemy Configuration
 SQLALCHEMY_DATABASE_URI = f"mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4"

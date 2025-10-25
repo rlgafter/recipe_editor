@@ -422,6 +422,121 @@ class EmailService:
             to_name=user_name
         )
     
+    def send_username_recovery_email(
+        self,
+        user_email: str,
+        username: str
+    ) -> tuple[bool, str]:
+        """Send username recovery email to user."""
+        subject = "Your Recipe Editor Username"
+        
+        html_content = f"""
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background-color: #3498db;
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                    border-radius: 5px 5px 0 0;
+                }}
+                .content {{
+                    background-color: #f8f9fa;
+                    padding: 30px;
+                    border-radius: 0 0 5px 5px;
+                }}
+                .username-box {{
+                    background-color: #e9ecef;
+                    padding: 15px;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                    text-align: center;
+                }}
+                .username {{
+                    font-size: 1.5em;
+                    font-weight: bold;
+                    color: #2c3e50;
+                }}
+                .button {{
+                    display: inline-block;
+                    background-color: #3498db;
+                    color: white;
+                    padding: 12px 24px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                }}
+                .footer {{
+                    text-align: center;
+                    color: #7f8c8d;
+                    font-size: 0.9em;
+                    margin-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Username Recovery</h1>
+            </div>
+            <div class="content">
+                <h2>Hello!</h2>
+                <p>We received a request to recover your username for your Recipe Editor account.</p>
+                
+                <p>Your username is:</p>
+                <div class="username-box">
+                    <div class="username">{username}</div>
+                </div>
+                
+                <p>You can now use this username to log in to your account.</p>
+                
+                <div style="text-align: center;">
+                    <a href="{self.base_url}/auth/login" class="button">Log In Now</a>
+                </div>
+                
+                <p><strong>Didn't request this?</strong> If you didn't request your username, you can safely ignore this email.</p>
+            </div>
+            <div class="footer">
+                <p>This email was sent from Recipe Editor</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        Username Recovery
+        
+        Hello!
+        
+        We received a request to recover your username for your Recipe Editor account.
+        
+        Your username is: {username}
+        
+        You can now use this username to log in to your account at:
+        {self.base_url}/auth/login
+        
+        Didn't request this? If you didn't request your username, you can safely ignore this email.
+        
+        ---
+        This email was sent from Recipe Editor
+        """
+        
+        return self.send_email(
+            to_email=user_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+            to_name=username
+        )
+    
     def send_notification_email(
         self,
         user_email: str,
