@@ -113,10 +113,15 @@ def auth_register():
         display_name = request.form.get('display_name', '').strip()
         password = request.form.get('password', '')
         password_confirm = request.form.get('password_confirm', '')
+        terms_accepted = request.form.get('terms_accepted') == 'on'
         
         # Validate
         if password != password_confirm:
             flash('Passwords do not match', 'error')
+            return render_template('register.html')
+        
+        if not terms_accepted:
+            flash('You must accept the terms of service to create an account', 'error')
             return render_template('register.html')
         
         success, user, error_msg = create_user_account(username, email, password, display_name or None)

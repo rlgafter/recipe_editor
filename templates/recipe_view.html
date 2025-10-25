@@ -33,24 +33,40 @@
                 <!-- Recipe Header -->
                 <h1 class="card-title mb-3">{{ recipe.name }}</h1>
                 
-                <!-- Source Information -->
-                {% if recipe.source and recipe.source.name %}
-                    <div class="mb-3" style="padding: 8px 0; font-size: 0.9em;">
-                        <i class="bi bi-book text-muted"></i> 
-                        <strong>{{ recipe.source.name }}</strong>
-                        {% if recipe.source.author %}
-                            <span class="text-muted">by {{ recipe.source.author }}</span>
-                        {% endif %}
-                        {% if recipe.source.issue %}
-                            <span class="text-muted">- {{ recipe.source.issue }}</span>
-                        {% endif %}
+        <!-- Source and Submitter Information -->
+        <div class="mb-3" style="padding: 8px 0; font-size: 0.9em;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    {% if recipe.source and recipe.source.name %}
+                        <span class="text-muted"><strong>Source:</strong></span> 
                         {% if recipe.source.url %}
-                            <a href="{{ recipe.source.url }}" target="_blank" class="ms-2 no-print">
-                                <i class="bi bi-link-45deg"></i>
+                            <a href="{{ recipe.source.url }}" target="_blank" class="text-decoration-none">
+                                <span class="text-muted">{{ recipe.source.name }}</span>
+                                {% if recipe.source.author %}
+                                    <span class="text-muted">by {{ recipe.source.author }}</span>
+                                {% endif %}
+                                {% if recipe.source.issue %}
+                                    <span class="text-muted">Issue: {{ recipe.source.issue }}</span>
+                                {% endif %}
                             </a>
+                        {% else %}
+                            <span class="text-muted">{{ recipe.source.name }}</span>
+                            {% if recipe.source.author %}
+                                <span class="text-muted">by {{ recipe.source.author }}</span>
+                            {% endif %}
+                            {% if recipe.source.issue %}
+                                <span class="text-muted">Issue: {{ recipe.source.issue }}</span>
+                            {% endif %}
                         {% endif %}
+                    {% endif %}
+                </div>
+                {% if submitter %}
+                    <div class="text-muted">
+                        <strong>Submitted By:</strong> {{ submitter.display_name or submitter.username }}
                     </div>
                 {% endif %}
+            </div>
+        </div>
                 
                 <!-- Tags -->
                 {% if recipe.tags %}
@@ -62,26 +78,25 @@
                 {% endif %}
                 
                 <!-- Action Buttons -->
-                <div class="btn-group mb-4 no-print" role="group">
-                    <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" class="btn btn-primary">
-                        <i class="bi bi-pencil"></i> Edit
-                    </a>
-                    <button type="button" class="btn btn-info" onclick="window.print()">
-                        <i class="bi bi-printer"></i> Print
-                    </button>
-                    <!-- Email button - always show for testing -->
-                    <a href="{{ url_for('recipe_email', recipe_id=recipe.id) }}" class="btn btn-success">
-                        <i class="bi bi-envelope"></i> Email
-                    </a>
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                        <i class="bi bi-trash"></i> Delete
-                    </button>
+                <div class="mb-4 no-print">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" class="btn btn-sm btn-primary" style="padding: 0.25rem 0.5rem;">
+                            Edit
+                        </a>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="window.print()" style="padding: 0.25rem 0.5rem;">
+                            Print
+                        </button>
+                        <a href="{{ url_for('recipe_email', recipe_id=recipe.id) }}" class="btn btn-sm btn-success" style="padding: 0.25rem 0.5rem;">
+                            Email
+                        </a>
+                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" style="padding: 0.25rem 0.5rem;">
+                            Delete
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Ingredients -->
-                <h2 class="mt-4 mb-3">
-                    <i class="bi bi-basket"></i> Ingredients
-                </h2>
+                <h2 class="mt-4 mb-3">Ingredients</h2>
                 <ul class="list-unstyled mb-4" style="line-height: 1.6;">
                     {% for ingredient in recipe.ingredients %}
                         <li style="margin-bottom: 0.3rem;">
@@ -98,9 +113,7 @@
                 
                 <!-- Instructions -->
                 {% if recipe.instructions %}
-                    <h2 class="mt-4 mb-3">
-                        <i class="bi bi-list-ol"></i> Instructions
-                    </h2>
+                    <h2 class="mt-4 mb-3">Instructions</h2>
                     <div class="card bg-light mb-4">
                         <div class="card-body">
                             <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ recipe.instructions }}</pre>
@@ -110,9 +123,7 @@
                 
                 <!-- Notes -->
                 {% if recipe.notes %}
-                    <h2 class="mt-4 mb-3">
-                        <i class="bi bi-sticky"></i> Notes
-                    </h2>
+                    <h2 class="mt-4 mb-3">Notes</h2>
                     <div class="card bg-warning bg-opacity-10 border-warning mb-4">
                         <div class="card-body">
                             <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ recipe.notes }}</pre>
@@ -123,16 +134,15 @@
                 <!-- Recipe Info -->
                 <div class="text-muted mt-4 no-print">
                     <small>
-                        <i class="bi bi-calendar-plus"></i> Created: {{ recipe.created_at[:10] }}<br>
-                        <i class="bi bi-calendar-check"></i> Updated: {{ recipe.updated_at[:10] }}
+                        Created: {{ recipe.created_at[:10] }} | Updated: {{ recipe.updated_at[:10] }}
                     </small>
                 </div>
             </div>
         </div>
         
         <div class="mt-3 no-print">
-            <a href="{{ url_for('recipe_list') }}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Recipes
+            <a href="{{ url_for('recipe_list') }}" class="btn btn-sm btn-outline-secondary">
+                ← Back to Recipes
             </a>
         </div>
     </div>
