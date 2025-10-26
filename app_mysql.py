@@ -14,6 +14,7 @@ from mysql_storage import MySQLStorage, init_storage
 from auth import init_auth, authenticate_user, create_user as create_user_account, change_password, update_user_profile
 from gemini_service import gemini_service
 from email_service import email_service
+from admin_routes import register_admin_routes
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -31,6 +32,9 @@ init_auth(app)
 # Initialize storage
 with app.app_context():
     storage = init_storage(db.session)
+
+# Register admin routes
+register_admin_routes(app)
 
 # Configure logging
 if not os.path.exists(config.LOGS_DIR):
@@ -303,6 +307,62 @@ def auth_reset_password(token):
             return redirect(url_for('auth_login'))
     
     return render_template('reset_password.html', token=token)
+
+
+@app.route('/setup-password/<token>', methods=['GET', 'POST'])
+def setup_password(token):
+    """Password setup for new users (admin-created accounts)."""
+    from db_models import User
+    from datetime import datetime
+    from werkzeug.security import generate_password_hash
+    
+    # Find user by setup token
+    user = db.session.query(User).filter(
+        User.password_setup_token == token,
+        User.account_setup_completed == False
+    ).first()
+    
+    if not user:
+        flash('Invalid or expired setup link. Please contact your administrator for a new link.', 'error')
+        return redirect(url_for('auth_login'))
+    
+    # Check if token is expired
+    if user.password_setup_expires < datetime.utcnow():
+        flash('This setup link has expired. Please contact your administrator for a new link.', 'error')
+        return redirect(url_for('auth_login'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        # Validate passwords
+        if not password or len(password) < 8:
+            flash('Password must be at least 8 characters long', 'error')
+            return render_template('setup_password.html', token=token, user=user)
+        
+        if password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template('setup_password.html', token=token, user=user)
+        
+        try:
+            # Update password
+            user.password_hash = generate_password_hash(password)
+            user.is_active = True
+            user.account_setup_completed = True
+            user.password_setup_token = None  # Invalidate token
+            user.password_setup_expires = None
+            db.session.commit()
+            
+            app.logger.info(f"Password setup completed for user {user.username}")
+            flash('Your password has been set successfully! Please log in with your new credentials.', 'success')
+            return redirect(url_for('auth_login'))
+            
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error setting password: {str(e)}")
+            flash('An error occurred. Please try again.', 'error')
+    
+    return render_template('setup_password.html', token=token, user=user)
 
 
 # ============================================================================

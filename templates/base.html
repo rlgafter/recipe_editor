@@ -45,11 +45,11 @@
                             <i class="bi bi-tags"></i> Manage Tags
                         </a>
                     </li>
-                    {% if session.user_id %}
+                    {% if current_user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'auth_profile' %}active{% endif %}" href="{{ url_for('auth_profile') }}">
                             <i class="bi bi-person"></i> Profile
-                            {% if session.user_status == 'unverified' %}
+                            {% if not current_user.email_verified %}
                                 <span class="badge bg-warning text-dark ms-1">Unverified</span>
                             {% endif %}
                         </a>
@@ -63,6 +63,11 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'auth_login' %}active{% endif %}" href="{{ url_for('auth_login') }}">
                             <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'auth_register' %}active{% endif %}" href="{{ url_for('auth_register') }}">
+                            <i class="bi bi-person-plus"></i> Register
                         </a>
                     </li>
                     {% endif %}

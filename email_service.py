@@ -2,6 +2,7 @@
 Enhanced email service for sending all types of emails via SMTP.
 """
 import smtplib
+import os
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -579,6 +580,76 @@ class EmailService:
         
         {message}
         """
+        
+        return self.send_email(
+            to_email=user_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+            to_name=user_name
+        )
+    
+    def send_password_setup_email(
+        self,
+        user_email: str,
+        user_name: str,
+        setup_token: str
+    ) -> tuple[bool, str]:
+        """Send password setup email to new user."""
+        setup_url = f"{self.base_url}/setup-password/{setup_token}"
+        
+        subject = "Welcome to Recipe Editor - Set Up Your Password"
+        
+        # Read template file
+        try:
+            template_path = os.path.join(os.path.dirname(__file__), 'email-templates', 'welcome_email.html')
+            with open(template_path, 'r') as f:
+                html_content = f.read()
+            
+            # Replace template variables
+            html_content = html_content.replace('{{ user_name }}', user_name)
+            html_content = html_content.replace('{{ setup_url }}', setup_url)
+            
+            # Create text version
+            text_content = f"""
+Welcome to Recipe Editor!
+
+Hello {user_name}!
+
+Welcome to Recipe Editor! Your account has been created by an administrator. To complete your account setup and start using Recipe Editor, please set your password by visiting this link:
+
+{setup_url}
+
+Important: This password setup link will expire in 24 hours for security reasons.
+
+What you can do with Recipe Editor:
+- Create and manage your personal recipe collection
+- Import recipes from URLs, text files, or PDFs using AI
+- Organize recipes with custom tags
+- Share recipes with friends and family via email
+- Print recipes in a beautiful format
+
+Need help? If you didn't request this account or need assistance, please contact your administrator.
+
+This email was sent from Recipe Editor
+© 2025 Recipe Editor. All rights reserved.
+"""
+            
+        except FileNotFoundError:
+            # Fallback if template doesn't exist
+            logger.warning("Welcome email template not found, using default format")
+            html_content = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <h2>Welcome to Recipe Editor!</h2>
+                <p>Hello {user_name}!</p>
+                <p>Your account has been created. Please set your password:</p>
+                <a href="{setup_url}" style="background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Set Up Your Password</a>
+                <p><strong>Important:</strong> This link expires in 24 hours.</p>
+            </body>
+            </html>
+            """
+            text_content = f"Welcome to Recipe Editor! Set your password at: {setup_url}"
         
         return self.send_email(
             to_email=user_email,

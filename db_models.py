@@ -34,6 +34,11 @@ class User(UserMixin, db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     
+    # Password setup fields for admin-created accounts
+    password_setup_token = db.Column(db.String(100), nullable=True)
+    password_setup_expires = db.Column(db.DateTime, nullable=True)
+    account_setup_completed = db.Column(db.Boolean, default=False)
+    
     # Relationships (simplified - no user_type relationship)
     recipes = db.relationship('Recipe', backref='owner', lazy='dynamic', cascade='all, delete-orphan')
     preferences = db.relationship('UserPreference', back_populates='user', uselist=False, cascade='all, delete-orphan')

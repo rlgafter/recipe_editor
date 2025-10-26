@@ -3,14 +3,23 @@
 {% block title %}Admin Dashboard{% endblock %}
 
 {% block content %}
+<script>
+    // Redirect to enhanced admin users page
+    window.location.href = "{{ url_for('admin_users') }}";
+</script>
+
 <div class="container mt-4">
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1><i class="fas fa-tachometer-alt"></i> Admin Dashboard</h1>
                 <div>
-                    <span class="badge bg-primary">{{ current_user.user_type.display_name }}</span>
+                    <span class="badge bg-primary">{% if current_user.is_admin %}Administrator{% else %}User{% endif %}</span>
                 </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Redirecting to enhanced admin panel...
             </div>
 
             <!-- Quick Stats -->
@@ -20,7 +29,7 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <h4>{{ user_stats.total_users }}</h4>
+                                    <h4>{{ total_users }}</h4>
                                     <p class="mb-0">Total Users</p>
                                 </div>
                                 <div class="align-self-center">
@@ -36,8 +45,8 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <h4>{{ user_stats.stats[1].user_count if user_stats.stats|length > 1 else 0 }}</h4>
-                                    <p class="mb-0">Validated Users</p>
+                                    <h4>{{ verified_users }}</h4>
+                                    <p class="mb-0">Verified Users</p>
                                 </div>
                                 <div class="align-self-center">
                                     <i class="fas fa-user-check fa-2x"></i>
@@ -52,11 +61,11 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <h4>{{ user_stats.stats[0].user_count if user_stats.stats|length > 0 else 0 }}</h4>
-                                    <p class="mb-0">Unvalidated Users</p>
+                                    <h4>{{ active_users }}</h4>
+                                    <p class="mb-0">Active Users</p>
                                 </div>
                                 <div class="align-self-center">
-                                    <i class="fas fa-user-clock fa-2x"></i>
+                                    <i class="fas fa-user fa-2x"></i>
                                 </div>
                             </div>
                         </div>
@@ -68,7 +77,7 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <h4>{{ user_stats.stats[3].user_count if user_stats.stats|length > 3 else 0 }}</h4>
+                                    <h4>{{ admin_users }}</h4>
                                     <p class="mb-0">Admins</p>
                                 </div>
                                 <div class="align-self-center">
@@ -80,66 +89,41 @@
                 </div>
             </div>
 
-            <!-- User Type Distribution -->
+            <!-- Recent Users -->
             <div class="row mb-4">
-                <div class="col-md-8">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-chart-pie"></i> User Type Distribution</h5>
-                        </div>
-                        <div class="card-body">
-                            {% for stat in user_stats.stats %}
-                            <div class="row mb-2">
-                                <div class="col-4">
-                                    <strong>{{ stat.display_name }}</strong>
-                                </div>
-                                <div class="col-6">
-                                    <div class="progress">
-                                        <div class="progress-bar" role="progressbar" 
-                                             style="width: {{ stat.percentage }}%"
-                                             aria-valuenow="{{ stat.percentage }}" 
-                                             aria-valuemin="0" aria-valuemax="100">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-2 text-end">
-                                    <span class="badge bg-primary">{{ stat.user_count }}</span>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-4">
+                <div class="col-md-12">
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0"><i class="fas fa-clock"></i> Recent Users</h5>
                         </div>
                         <div class="card-body">
                             {% if recent_users %}
-                            {% for user in recent_users %}
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="flex-shrink-0">
-                                    {% if user.avatar_url %}
-                                    <img src="{{ user.avatar_url }}" alt="Avatar" class="rounded-circle" width="32" height="32">
-                                    {% else %}
-                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                        {{ user.username[0].upper() }}
+                            <div class="row">
+                                {% for user in recent_users %}
+                                <div class="col-md-3 col-sm-6 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0">
+                                            {% if user.avatar_url %}
+                                            <img src="{{ user.avatar_url }}" alt="Avatar" class="rounded-circle" width="40" height="40">
+                                            {% else %}
+                                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                {{ user.username[0].upper() }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="flex-grow-1 ms-2">
+                                            <h6 class="mb-0">{{ user.display_name or user.username }}</h6>
+                                            <small class="text-muted">{{ user.created_at.strftime('%Y-%m-%d') }}</small>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-{{ 'danger' if user.is_admin else 'primary' if user.email_verified else 'secondary' }}">
+                                                {% if user.is_admin %}Admin{% elif user.email_verified %}Verified{% else %}Unverified{% endif %}
+                                            </span>
+                                        </div>
                                     </div>
-                                    {% endif %}
                                 </div>
-                                <div class="flex-grow-1 ms-2">
-                                    <h6 class="mb-0">{{ user.display_name or user.username }}</h6>
-                                    <small class="text-muted">{{ user.created_at.strftime('%Y-%m-%d') }}</small>
-                                </div>
-                                <div>
-                                    <span class="badge bg-{{ 'danger' if user.user_type.name == 'admin' else 'primary' if user.user_type.name == 'validated' else 'secondary' }}">
-                                        {{ user.user_type.name }}
-                                    </span>
-                                </div>
+                                {% endfor %}
                             </div>
-                            {% endfor %}
                             {% else %}
                             <p class="text-muted">No recent users</p>
                             {% endif %}
@@ -157,25 +141,19 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="col-md-4 col-sm-6 mb-3">
                                     <a href="{{ url_for('admin_users') }}" class="btn btn-outline-primary w-100">
                                         <i class="fas fa-users"></i><br>
-                                        Manage Users
+                                        User Management
                                     </a>
                                 </div>
-                                <div class="col-md-3 col-sm-6 mb-3">
-                                    <a href="{{ url_for('admin_user_types') }}" class="btn btn-outline-secondary w-100">
-                                        <i class="fas fa-user-tag"></i><br>
-                                        User Types
-                                    </a>
-                                </div>
-                                <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="col-md-4 col-sm-6 mb-3">
                                     <a href="{{ url_for('tag_manager') }}" class="btn btn-outline-info w-100">
                                         <i class="fas fa-tags"></i><br>
                                         Manage Tags
                                     </a>
                                 </div>
-                                <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="col-md-4 col-sm-6 mb-3">
                                     <a href="{{ url_for('recipe_list') }}" class="btn btn-outline-success w-100">
                                         <i class="fas fa-utensils"></i><br>
                                         View Recipes
