@@ -5,6 +5,22 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 
+# Load .env file if it exists
+try:
+    with open('.env', 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and 'export ' in line:
+                # Handle export VAR=value format
+                key_value = line.replace('export ', '').strip()
+                if '=' in key_value:
+                    key, value = key_value.split('=', 1)
+                    # Remove quotes from value
+                    value = value.strip('\'"')
+                    os.environ[key.strip()] = value
+except FileNotFoundError:
+    pass
+
 # MySQL Configuration from environment variables
 MYSQL_HOST = os.environ.get('RECIPE_DB_HOSTNAME', os.environ.get('MYSQL_HOST', 'localhost'))
 MYSQL_PORT = int(os.environ.get('RECIPE_DB_PORT', os.environ.get('MYSQL_PORT', 3306)))
