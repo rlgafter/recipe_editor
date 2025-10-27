@@ -136,21 +136,8 @@
                                 {% for user in users %}
                                 <tr id="user-row-{{ user.id }}" data-user-id="{{ user.id }}">
                                     <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-shrink-0">
-                                                {% if user.avatar_url %}
-                                                <img src="{{ user.avatar_url }}" alt="Avatar" class="rounded-circle" width="40" height="40">
-                                                {% else %}
-                                                <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                                    {{ user.username[0].upper() }}
-                                                </div>
-                                                {% endif %}
-                                            </div>
-                                            <div class="flex-grow-1 ms-3">
-                                                <h6 class="mb-0">{{ user.display_name or user.username }}</h6>
-                                                <small class="text-muted">{{ user.email }}</small>
-                                            </div>
-                                        </div>
+                                        <h6 class="mb-0">{{ user.display_name or user.username }}</h6>
+                                        <small class="text-muted">{{ user.email }}</small>
                                     </td>
                                     <td>
                                         <div class="view-mode" id="role-view-{{ user.id }}">
