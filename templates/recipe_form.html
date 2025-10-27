@@ -265,6 +265,41 @@
                                   placeholder="Any additional notes or tips...">{% if recipe %}{{ recipe.notes }}{% endif %}</textarea>
                     </div>
                     
+                    <!-- Visibility -->
+                    <div class="mb-3">
+                        <label for="visibility" class="form-label">Visibility</label>
+                        {% if current_user.can_publish_public_recipes() %}
+                            <!-- Show all options to users with permission -->
+                            <select name="visibility" id="visibility" class="form-select">
+                                <option value="incomplete" {% if recipe and recipe.visibility == 'incomplete' %}selected{% endif %}>
+                                    📝 Incomplete - Work in progress
+                                </option>
+                                <option value="private" {% if recipe and recipe.visibility == 'private' %}selected{% endif %}>
+                                    🔒 Private - Only you can see
+                                </option>
+                                <option value="public" {% if recipe and recipe.visibility == 'public' %}selected{% endif %}>
+                                    🌍 Public - All users can see
+                                </option>
+                            </select>
+                            <small class="form-text text-muted">
+                                Incomplete recipes are private by default. Public recipes are visible to all logged-in users.
+                            </small>
+                        {% else %}
+                            <!-- Users without permission only see incomplete and private -->
+                            <select name="visibility" id="visibility" class="form-select">
+                                <option value="incomplete" {% if recipe and recipe.visibility == 'incomplete' %}selected{% endif %}>
+                                    📝 Incomplete - Work in progress
+                                </option>
+                                <option value="private" {% if recipe and recipe.visibility == 'private' %}selected{% endif %}>
+                                    🔒 Private - Only you can see
+                                </option>
+                            </select>
+                            <small class="form-text text-muted">
+                                Incomplete recipes are private by default. Contact an administrator to enable public recipe publishing.
+                            </small>
+                        {% endif %}
+                    </div>
+                    
                     <!-- Tags -->
                     <div class="mb-3">
                         <label class="form-label">Tags</label>

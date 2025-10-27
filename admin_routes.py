@@ -239,6 +239,9 @@ def register_admin_routes(app):
             if 'account_setup_completed' in data:
                 user.account_setup_completed = bool(data['account_setup_completed'])
             
+            if 'can_publish_public' in data:
+                user.can_publish_public = bool(data['can_publish_public'])
+            
             db.session.commit()
             
             logger.info(f"User {user.username} updated by admin {current_user.username}")

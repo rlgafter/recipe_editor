@@ -40,11 +40,6 @@
                             <i class="bi bi-plus-circle"></i> New Recipe
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'tag_manager' %}active{% endif %}" href="{{ url_for('tag_manager') }}">
-                            <i class="bi bi-tags"></i> Manage Tags
-                        </a>
-                    </li>
                     {% if current_user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'auth_profile' %}active{% endif %}" href="{{ url_for('auth_profile') }}">

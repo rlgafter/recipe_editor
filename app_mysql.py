@@ -443,6 +443,16 @@ def recipe_new():
     # POST - Create new recipe
     try:
         recipe_data = _parse_recipe_form(request.form)
+        
+        # Validate visibility permission
+        visibility = recipe_data.get('visibility', 'incomplete')
+        if visibility == 'public' and not current_user.can_publish_public_recipes():
+            flash('You do not have permission to publish public recipes', 'error')
+            all_tags = storage.get_all_tags()
+            gemini_configured = gemini_service.is_configured()
+            return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
+                                 new_tags=[], gemini_configured=gemini_configured), 403
+        
         recipe = storage.save_recipe(recipe_data, current_user.id)
         
         flash(f'Recipe "{recipe.name}" created successfully!', 'success')
@@ -482,6 +492,16 @@ def recipe_edit(recipe_id):
     # POST - Update recipe
     try:
         recipe_data = _parse_recipe_form(request.form)
+        
+        # Validate visibility permission
+        visibility = recipe_data.get('visibility', 'incomplete')
+        if visibility == 'public' and not current_user.can_publish_public_recipes():
+            flash('You do not have permission to publish public recipes', 'error')
+            all_tags = storage.get_all_tags()
+            gemini_configured = gemini_service.is_configured()
+            return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, 
+                                 new_tags=[], gemini_configured=gemini_configured), 403
+        
         storage.save_recipe(recipe_data, current_user.id, recipe_id=recipe_id)
         
         flash(f'Recipe "{recipe.name}" updated successfully!', 'success')
@@ -790,7 +810,7 @@ def _parse_recipe_form(form_data):
         'source': source,
         'ingredients': ingredients,
         'tags': tags,
-        'visibility': form_data.get('visibility', 'private')
+        'visibility': form_data.get('visibility', 'incomplete')
     }
 
 
