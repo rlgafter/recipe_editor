@@ -104,7 +104,7 @@ class UserPreference(db.Model):
     dietary_restrictions = db.Column(JSON)
     allergens = db.Column(JSON)
     email_notifications = db.Column(db.Boolean, default=True)
-    default_visibility = db.Column(db.Enum('private', 'public', 'unlisted'), default='private')
+    default_visibility = db.Column(db.Enum('private', 'public', 'incomplete'), default='incomplete')
     theme = db.Column(db.String(20), default='light')
     
     # Relationship
@@ -227,7 +227,7 @@ class Recipe(db.Model):
     cook_time = db.Column(db.Integer)
     servings = db.Column(db.String(50))
     difficulty = db.Column(db.Enum('easy', 'medium', 'hard'))
-    visibility = db.Column(db.Enum('private', 'public', 'unlisted'), default='private')
+    visibility = db.Column(db.Enum('private', 'public', 'incomplete'), default='incomplete')
     slug = db.Column(db.String(250), unique=True)
     meta_description = db.Column(db.String(300))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -262,7 +262,7 @@ class Recipe(db.Model):
         # Public recipes visible to all logged-in users
         if self.visibility == 'public' and user:
             return True
-        # Users can always view their own recipes
+        # Users can always view their own recipes (private and incomplete)
         if user and (user.id == self.user_id or user.is_admin):
             return True
         return False
@@ -278,7 +278,7 @@ class Recipe(db.Model):
         # Only users with permission can make recipes public
         if visibility_level == 'public':
             return user.can_publish_public_recipes()
-        return True  # Anyone can set private or unlisted
+        return True  # Anyone can set private or incomplete
     
     def __repr__(self):
         return f'<Recipe {self.name}>'

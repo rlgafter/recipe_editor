@@ -445,7 +445,7 @@ def recipe_new():
         recipe_data = _parse_recipe_form(request.form)
         
         # Validate visibility permission
-        visibility = recipe_data.get('visibility', 'private')
+        visibility = recipe_data.get('visibility', 'incomplete')
         if visibility == 'public' and not current_user.can_publish_public_recipes():
             flash('You do not have permission to publish public recipes', 'error')
             all_tags = storage.get_all_tags()
@@ -494,7 +494,7 @@ def recipe_edit(recipe_id):
         recipe_data = _parse_recipe_form(request.form)
         
         # Validate visibility permission
-        visibility = recipe_data.get('visibility', 'private')
+        visibility = recipe_data.get('visibility', 'incomplete')
         if visibility == 'public' and not current_user.can_publish_public_recipes():
             flash('You do not have permission to publish public recipes', 'error')
             all_tags = storage.get_all_tags()
@@ -810,7 +810,7 @@ def _parse_recipe_form(form_data):
         'source': source,
         'ingredients': ingredients,
         'tags': tags,
-        'visibility': form_data.get('visibility', 'private')
+        'visibility': form_data.get('visibility', 'incomplete')
     }
 
 
