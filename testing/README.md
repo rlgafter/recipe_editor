@@ -1,221 +1,207 @@
-# Testing Directory
+# Recipe Editor Test Suite
 
-This directory contains test scripts and testing utilities for the Recipe Editor application.
+A comprehensive test suite for the Recipe Editor application that tests authentication, authorization, recipe validation, and complete user workflows across both JSON and MySQL storage backends.
 
-## 📁 Directory Structure
+## Test Structure
 
-```
-testing/
-├── README.md                           # This file
-├── run_tests.py                        # Test runner script
-├── open_popup_test.py                  # Helper to open popup test page
-├── test_enhanced_email_service.py     # Email service tests
-├── test_email_popups.html             # Email popup UI tests
-├── test_user_registration.py          # User registration tests (planned)
-├── test_database_migrations.py        # Database migration tests (planned)
-└── test_integration.py                # Integration tests (planned)
-```
+The test suite is organized into the following categories:
 
-## 🧪 Test Scripts
+### 1. Authentication & Authorization Tests (`test_auth.py`)
+- **User Authentication**: Login/logout functionality, credential validation
+- **Access Control**: Protected route access, session management
+- **User Permissions**: Recipe creation permissions, admin access
+- **Session Management**: Session persistence and expiry
 
-### **test_enhanced_email_service.py**
-Tests the enhanced email service functionality:
-- Universal `send_email()` method
-- `send_verification_email()` method
-- `send_welcome_email()` method
-- `send_password_reset_email()` method
-- `send_notification_email()` method
-- Updated `send_recipe()` method
+### 2. Recipe Visibility Tests (`test_recipe_visibility.py`)
+- **Visibility Control**: Private, public, and incomplete recipe access
+- **User Access**: Logged-in vs logged-out user recipe visibility
+- **Admin Access**: Admin users can see all recipes
+- **Recipe Filtering**: Proper filtering in recipe lists
 
-**Usage:**
+### 3. Validation Tests (`test_validation.py`)
+- **Field Validation**: Name, instructions, source, ingredients
+- **Error Messages**: Consistent error presentation
+- **Edge Cases**: Special characters, unicode, long inputs
+- **Form Integration**: Multiple validation errors
+
+### 4. Recipe Requirements Tests (`test_recipe_requirements.py`)
+- **Minimum Requirements**: Name, source, 3+ ingredients, instructions
+- **Source Validation**: At least one of name, author, or URL required
+- **Ingredient Validation**: Minimum 3 ingredients with descriptions
+- **Complete Workflows**: End-to-end requirement validation
+
+### 5. Integration Tests (`test_integration.py`)
+- **Complete Workflows**: Registration → Login → Recipe Creation
+- **Error Recovery**: Form validation error handling
+- **Data Consistency**: Recipe data consistency across operations
+- **Performance**: Response time and concurrent operations
+
+## Test Configuration
+
+### Backend Support
+The test suite supports both storage backends:
+- **JSON Backend**: Uses `app.py` with JSON file storage
+- **MySQL Backend**: Uses `app_mysql.py` with SQLite for testing
+
+### Test Database
+- Uses **SQLite in-memory database** for fast test execution
+- Each test gets a fresh database instance
+- No external database dependencies required
+
+### Fixtures
+- **Test Users**: Regular user and admin user accounts
+- **Test Recipes**: Public, private, and incomplete recipes
+- **Invalid Data**: Comprehensive invalid data sets for validation testing
+- **Valid Data**: Complete valid recipe data for success testing
+
+## Running Tests
+
+### Prerequisites
+Install test dependencies:
 ```bash
-cd /path/to/recipe_editor
-python3 testing/test_enhanced_email_service.py
+pip install pytest pytest-flask
 ```
 
-### **test_email_popups.html**
-Interactive test page for email popup notifications:
-- Success popup testing with different scenarios
-- Error popup testing with various error types
-- Multiple popup stacking behavior
-- Real recipe data testing
-- Manual popup dismissal testing
-
-**Usage:**
+### Run All Tests
 ```bash
-# Easy way - use the helper script
-python3 testing/open_popup_test.py
+# From project root
+python testing/run_tests.py
 
-# Manual way - open in browser
-open testing/test_email_popups.html
-
-# Or serve via web server
-python3 -m http.server 8000
-# Then visit: http://localhost:8000/testing/test_email_popups.html
+# Or using pytest directly
+pytest testing/ -v
 ```
 
-### **open_popup_test.py**
-Helper script to easily open the email popup test page:
-- Opens the test page in your default browser
-- Shows test features and instructions
-- No setup required
-
-**Usage:**
+### Run Specific Test Categories
 ```bash
-python3 testing/open_popup_test.py
+# Authentication tests only
+pytest testing/test_auth.py -v
+
+# Validation tests only
+pytest testing/test_validation.py -v
+
+# Integration tests only
+pytest testing/test_integration.py -v
 ```
 
-### **Planned Test Scripts:**
-
-#### **test_user_registration.py**
-- Test user registration form validation
-- Test username/email uniqueness checks
-- Test password confirmation
-- Test terms acceptance
-- Test email verification flow
-
-#### **test_database_migrations.py**
-- Test database schema updates
-- Test user type migrations
-- Test verification field additions
-- Test unique constraint creation
-
-#### **test_integration.py**
-- Test complete registration flow
-- Test email verification end-to-end
-- Test user login after verification
-- Test error handling scenarios
-
-## 🚀 Running Tests
-
-### **Individual Test Scripts:**
+### Run Tests for Specific Backend
 ```bash
-# Test email service
-python3 testing/test_enhanced_email_service.py
+# JSON backend only
+pytest testing/ -k "json" -v
 
-# Test user registration (when implemented)
-python3 testing/test_user_registration.py
-
-# Test database migrations (when implemented)
-python3 testing/test_database_migrations.py
-
-# Test integration (when implemented)
-python3 testing/test_integration.py
+# MySQL backend only
+pytest testing/ -k "mysql" -v
 ```
 
-### **All Tests (Future):**
+### Run Tests with Markers
 ```bash
-# Run all tests
-python3 -m pytest testing/
+# Unit tests only
+pytest testing/ -m "unit" -v
 
-# Run with verbose output
-python3 -m pytest testing/ -v
+# Integration tests only
+pytest testing/ -m "integration" -v
 
-# Run specific test file
-python3 -m pytest testing/test_enhanced_email_service.py
+# Skip slow tests
+pytest testing/ -m "not slow" -v
 ```
 
-## 📋 Test Requirements
+## Test Coverage
 
-### **For Email Service Tests:**
-- No external dependencies required
-- Tests method existence and basic functionality
-- SMTP configuration not required for basic tests
+### Authentication & Authorization
+- ✅ Login/logout functionality
+- ✅ Protected route access control
+- ✅ Session management
+- ✅ User permission validation
+- ✅ Admin access control
 
-### **For Registration Tests:**
-- Database connection required
-- SMTP configuration for email tests
-- Test user cleanup after tests
+### Recipe Visibility
+- ✅ Public recipe visibility to all users
+- ✅ Private recipe visibility to owners only
+- ✅ Incomplete recipe visibility to owners only
+- ✅ Admin access to all recipes
+- ✅ Recipe list filtering
 
-### **For Integration Tests:**
-- Full application setup
-- Database with test data
-- SMTP configuration
-- Web server running
+### Validation
+- ✅ Required field validation (name, instructions, source, ingredients)
+- ✅ Field format validation (amounts, URLs)
+- ✅ Error message consistency
+- ✅ Multiple validation error handling
+- ✅ Edge case handling (unicode, special characters)
 
-## 🔧 Test Configuration
+### Recipe Requirements
+- ✅ Recipe name requirement
+- ✅ Source information requirement (name, author, or URL)
+- ✅ Minimum 3 ingredients requirement
+- ✅ Instructions requirement
+- ✅ Complete recipe validation
 
-### **Environment Variables for Testing:**
+### Integration
+- ✅ Complete user workflows
+- ✅ Error recovery scenarios
+- ✅ Data consistency across operations
+- ✅ Performance testing
+- ✅ Cross-backend compatibility
+
+## Test Data
+
+### Test Users
+- **testuser**: Regular user with recipe creation permissions
+- **admin**: Admin user with full access
+
+### Test Recipes
+- **Public Recipe**: Visible to all authenticated users
+- **Private Recipe**: Visible only to owner
+- **Incomplete Recipe**: Visible only to owner
+
+### Validation Test Cases
+- Empty fields
+- Invalid formats
+- Insufficient data
+- Special characters
+- Unicode characters
+- Very long inputs
+
+## Error Message Consistency
+
+The test suite ensures that error messages are:
+- **Consistent**: Same format across different validation failures
+- **Descriptive**: Clear indication of what's wrong
+- **User-friendly**: Easy to understand and act upon
+- **Comprehensive**: Cover all validation scenarios
+
+## Performance Considerations
+
+- Tests use SQLite in-memory database for speed
+- Each test is isolated with fresh data
+- Timeout limits prevent hanging tests
+- Concurrent operation testing included
+
+## Continuous Integration
+
+The test suite is designed to work in CI environments:
+- No external dependencies
+- Fast execution
+- Clear pass/fail indicators
+- Comprehensive error reporting
+
+## Contributing
+
+When adding new tests:
+1. Follow the existing test structure and naming conventions
+2. Add appropriate markers (`@pytest.mark.unit`, `@pytest.mark.integration`)
+3. Include both positive and negative test cases
+4. Test both JSON and MySQL backends
+5. Update this README if adding new test categories
+
+## Troubleshooting
+
+### Common Issues
+- **Import Errors**: Ensure you're running from the project root
+- **Database Errors**: Check that SQLite is available
+- **Authentication Errors**: Verify test user credentials in fixtures
+- **Timeout Errors**: Increase timeout limits for slow tests
+
+### Debug Mode
+Run tests with verbose output for debugging:
 ```bash
-# Database (for integration tests)
-TEST_DATABASE_URL=sqlite:///test_recipe_editor.db
-
-# Email (for email tests)
-TEST_SMTP_SERVER=smtp.gmail.com
-TEST_SMTP_PORT=587
-TEST_SMTP_USERNAME=your-email@gmail.com
-TEST_SMTP_PASSWORD=your-app-password
-TEST_SENDER_EMAIL=your-email@gmail.com
-TEST_SENDER_NAME=Recipe Editor Test
-
-# Application
-TEST_BASE_URL=http://localhost:5000
+pytest testing/ -v -s --tb=long
 ```
-
-## 📊 Test Coverage Goals
-
-- **Email Service**: 100% method coverage
-- **User Registration**: 90%+ scenario coverage
-- **Database Operations**: 95%+ query coverage
-- **Integration Flow**: 85%+ user journey coverage
-
-## 🐛 Debugging Tests
-
-### **Common Issues:**
-1. **Import Errors**: Ensure project root is in Python path
-2. **Configuration Errors**: Check environment variables
-3. **Database Errors**: Verify database connection
-4. **Email Errors**: Verify SMTP configuration
-
-### **Debug Mode:**
-```bash
-# Run with debug output
-PYTHONPATH=/path/to/recipe_editor python3 testing/test_enhanced_email_service.py
-
-# Run with logging
-python3 testing/test_enhanced_email_service.py --debug
-```
-
-## 📝 Adding New Tests
-
-### **Test File Template:**
-```python
-#!/usr/bin/env python3
-"""
-Test script for [component name].
-"""
-
-import sys
-import os
-
-# Add the project root to the Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-def test_component():
-    """Test [component name] functionality."""
-    print("🧪 Testing [Component Name]")
-    print("=" * 50)
-    
-    # Test implementation here
-    
-    print("✅ Test Complete!")
-
-if __name__ == "__main__":
-    test_component()
-```
-
-### **Best Practices:**
-- Use descriptive test names
-- Include setup and teardown
-- Test both success and failure cases
-- Clean up test data
-- Use meaningful assertions
-- Document test requirements
-
-## 🎯 Future Enhancements
-
-- **Automated Testing**: CI/CD integration
-- **Performance Testing**: Load testing for registration
-- **Security Testing**: Input validation and SQL injection tests
-- **UI Testing**: Selenium-based browser tests
-- **API Testing**: REST endpoint testing
