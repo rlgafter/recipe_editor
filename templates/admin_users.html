@@ -128,6 +128,7 @@
                                     <th>Recipes</th>
                                     <th>Last Login</th>
                                     <th>Status</th>
+                                    <th>Permissions</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -205,6 +206,21 @@
                                             <div class="form-check form-check-sm">
                                                 <input class="form-check-input" type="checkbox" id="status-setup-{{ user.id }}" {% if user.account_setup_completed %}checked{% endif %}>
                                                 <label class="form-check-label" for="status-setup-{{ user.id }}">Setup Complete</label>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="view-mode" id="permissions-view-{{ user.id }}">
+                                            {% if user.can_publish_public %}
+                                            <span class="badge bg-success">Can Publish Public</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">Standard</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="edit-mode" id="permissions-edit-{{ user.id }}" style="display: none;">
+                                            <div class="form-check form-check-sm">
+                                                <input class="form-check-input" type="checkbox" id="permission-publish-{{ user.id }}" {% if user.can_publish_public %}checked{% endif %}>
+                                                <label class="form-check-label" for="permission-publish-{{ user.id }}">Can Publish Public</label>
                                             </div>
                                         </div>
                                     </td>
@@ -479,7 +495,8 @@ function toggleEditMode(userId) {
         role: document.getElementById(`role-select-${userId}`).value === '1',
         active: document.getElementById(`status-active-${userId}`).checked,
         verified: document.getElementById(`status-verified-${userId}`).checked,
-        setup: document.getElementById(`status-setup-${userId}`).checked
+        setup: document.getElementById(`status-setup-${userId}`).checked,
+        publish: document.getElementById(`permission-publish-${userId}`).checked
     };
     
     // Toggle visibility
@@ -487,6 +504,8 @@ function toggleEditMode(userId) {
     document.getElementById(`role-edit-${userId}`).style.display = 'block';
     document.getElementById(`status-view-${userId}`).style.display = 'none';
     document.getElementById(`status-edit-${userId}`).style.display = 'block';
+    document.getElementById(`permissions-view-${userId}`).style.display = 'none';
+    document.getElementById(`permissions-edit-${userId}`).style.display = 'block';
     
     // Toggle buttons
     document.getElementById(`edit-btn-${userId}`).style.display = 'none';
@@ -501,6 +520,7 @@ function cancelEditMode(userId) {
         document.getElementById(`status-active-${userId}`).checked = originalValues[userId].active;
         document.getElementById(`status-verified-${userId}`).checked = originalValues[userId].verified;
         document.getElementById(`status-setup-${userId}`).checked = originalValues[userId].setup;
+        document.getElementById(`permission-publish-${userId}`).checked = originalValues[userId].publish;
     }
     
     // Toggle visibility
@@ -508,6 +528,8 @@ function cancelEditMode(userId) {
     document.getElementById(`role-edit-${userId}`).style.display = 'none';
     document.getElementById(`status-view-${userId}`).style.display = 'block';
     document.getElementById(`status-edit-${userId}`).style.display = 'none';
+    document.getElementById(`permissions-view-${userId}`).style.display = 'block';
+    document.getElementById(`permissions-edit-${userId}`).style.display = 'none';
     
     // Toggle buttons
     document.getElementById(`edit-btn-${userId}`).style.display = 'inline-block';
@@ -524,13 +546,15 @@ function saveUserChanges(userId) {
     const activeValue = document.getElementById(`status-active-${userId}`).checked;
     const verifiedValue = document.getElementById(`status-verified-${userId}`).checked;
     const setupValue = document.getElementById(`status-setup-${userId}`).checked;
+    const publishValue = document.getElementById(`permission-publish-${userId}`).checked;
     
     // Check if anything changed
     const hasChanges = 
         originalValues[userId].role !== roleValue ||
         originalValues[userId].active !== activeValue ||
         originalValues[userId].verified !== verifiedValue ||
-        originalValues[userId].setup !== setupValue;
+        originalValues[userId].setup !== setupValue ||
+        originalValues[userId].publish !== publishValue;
     
     if (!hasChanges) {
         // No changes, just cancel edit mode
@@ -549,7 +573,8 @@ function saveUserChanges(userId) {
         is_admin: roleValue,
         is_active: activeValue,
         email_verified: verifiedValue,
-        account_setup_completed: setupValue
+        account_setup_completed: setupValue,
+        can_publish_public: publishValue
     };
     
     // Send update request

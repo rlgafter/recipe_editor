@@ -30,6 +30,7 @@ class User(UserMixin, db.Model):
     email_verified = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     is_admin = db.Column(db.Boolean, default=False)  # Keep for backward compatibility
+    can_publish_public = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
@@ -87,6 +88,10 @@ class User(UserMixin, db.Model):
     def can_share_recipes(self):
         """Check if user can share recipes."""
         return self.is_active  # All active users can share
+    
+    def can_publish_public_recipes(self):
+        """Check if user can publish public recipes."""
+        return self.is_admin or self.can_publish_public
 
 
 class UserPreference(db.Model):
@@ -251,6 +256,29 @@ class Recipe(db.Model):
     def ingredients(self):
         """Alias for recipe_ingredients to maintain compatibility with templates."""
         return self.recipe_ingredients
+    
+    def can_view(self, user):
+        """Check if a user can view this recipe."""
+        # Public recipes visible to all logged-in users
+        if self.visibility == 'public' and user:
+            return True
+        # Users can always view their own recipes
+        if user and (user.id == self.user_id or user.is_admin):
+            return True
+        return False
+    
+    def can_set_visibility_to(self, visibility_level, user):
+        """Check if user can set this visibility level."""
+        if not user:
+            return False
+        if user.is_admin:
+            return True
+        if user.id != self.user_id:
+            return False
+        # Only users with permission can make recipes public
+        if visibility_level == 'public':
+            return user.can_publish_public_recipes()
+        return True  # Anyone can set private or unlisted
     
     def __repr__(self):
         return f'<Recipe {self.name}>'
