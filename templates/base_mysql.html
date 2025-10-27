@@ -58,13 +58,6 @@
                         </li>
                     {% endif %}
                     
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'tag_manager' %}active{% endif %}" 
-                           href="{{ url_for('tag_manager') }}">
-                            <i class="bi bi-tags"></i> Tags
-                        </a>
-                    </li>
-                    
                     {% if current_user.is_authenticated %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" 
