@@ -444,6 +444,16 @@ def recipe_new():
     try:
         recipe_data = _parse_recipe_form(request.form)
         
+        # Validate recipe data
+        is_valid, errors = _validate_recipe_data(recipe_data)
+        if not is_valid:
+            for error in errors:
+                flash(error, 'error')
+            all_tags = storage.get_all_tags()
+            gemini_configured = gemini_service.is_configured()
+            return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
+                                 new_tags=[], gemini_configured=gemini_configured), 400
+        
         # Validate visibility permission
         visibility = recipe_data.get('visibility', 'incomplete')
         if visibility == 'public' and not current_user.can_publish_public_recipes():
@@ -492,6 +502,16 @@ def recipe_edit(recipe_id):
     # POST - Update recipe
     try:
         recipe_data = _parse_recipe_form(request.form)
+        
+        # Validate recipe data
+        is_valid, errors = _validate_recipe_data(recipe_data)
+        if not is_valid:
+            for error in errors:
+                flash(error, 'error')
+            all_tags = storage.get_all_tags()
+            gemini_configured = gemini_service.is_configured()
+            return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, 
+                                 new_tags=[], gemini_configured=gemini_configured), 400
         
         # Validate visibility permission
         visibility = recipe_data.get('visibility', 'incomplete')
@@ -754,6 +774,108 @@ def tag_manager():
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
+def _validate_recipe_data(recipe_data):
+    """
+    Validate recipe data and return (is_valid, errors).
+    """
+    errors = []
+    
+    # Name validation - must be at least 3 characters after removing whitespace
+    name = recipe_data.get('name', '').strip()
+    if not name:
+        errors.append("Please provide a valid recipe name")
+    elif len(name) < 3:
+        errors.append("Recipe name must be at least 3 characters long")
+    
+    # Instructions validation - must have non-blank characters
+    instructions = recipe_data.get('instructions', '').strip()
+    if not instructions:
+        errors.append("Please provide recipe instructions")
+    
+    # Source validation - at least one field must have non-blank content
+    source = recipe_data.get('source', {})
+    has_name = source.get('name', '').strip()
+    has_author = source.get('author', '').strip()
+    has_url = source.get('url', '').strip()
+    
+    if not (has_name or has_author or has_url):
+        errors.append("Please provide the recipe's provenance (source name, author, or URL)")
+    
+    # URL validation - must be a valid URL if provided
+    if has_url:
+        if not (has_url.startswith('http://') or has_url.startswith('https://')):
+            errors.append("Please enter a valid URL (must start with http:// or https://)")
+    
+    # Ingredient validation
+    ingredients = recipe_data.get('ingredients', [])
+    
+    # Check minimum 3 ingredients
+    if len(ingredients) < 3:
+        errors.append("Recipes must have at least three ingredients")
+    
+    # Validate each ingredient
+    for i, ing in enumerate(ingredients, 1):
+        description = ing.get('description', '').strip()
+        amount = ing.get('amount', '').strip()
+        
+        # Each ingredient must have both description and amount
+        if not description and not amount:
+            continue  # Skip completely empty ingredients
+        
+        if not description:
+            errors.append(f"Ingredient {i}: Please enter a valid ingredient description")
+        
+        if not amount:
+            errors.append(f"Ingredient {i}: Please enter a valid ingredient amount")
+        
+        # Amount must be numerical (1, 1.5, 1/2, 1 1/2, etc.)
+        if amount and not _is_valid_amount(amount):
+            errors.append(f"Ingredient {i}: Please enter a valid numerical amount (e.g., 1, 1.5, 1/2, 1 1/2)")
+    
+    return len(errors) == 0, errors
+
+
+def _is_valid_amount(amount: str) -> bool:
+    """
+    Validate amount is a number or fraction.
+    Reuses validation logic from models.py
+    """
+    import re
+    
+    amount = amount.strip()
+    if not amount:
+        return True
+    
+    # Check for simple number (integer or decimal)
+    if re.match(r'^\d+\.?\d*$', amount):
+        value = float(amount)
+        return 0 <= value <= 1000
+    
+    # Check for fraction (e.g., 1/2, 3/4)
+    if re.match(r'^\d+/\d+$', amount):
+        parts = amount.split('/')
+        numerator = int(parts[0])
+        denominator = int(parts[1])
+        if denominator == 0:
+            return False
+        value = numerator / denominator
+        return 0 <= value <= 1000
+    
+    # Check for mixed number (e.g., 1 1/2)
+    if re.match(r'^\d+\s+\d+/\d+$', amount):
+        parts = amount.split()
+        whole = int(parts[0])
+        frac_parts = parts[1].split('/')
+        numerator = int(frac_parts[0])
+        denominator = int(frac_parts[1])
+        if denominator == 0:
+            return False
+        value = whole + (numerator / denominator)
+        return 0 <= value <= 1000
+    
+    return False
+
 
 def _parse_recipe_form(form_data):
     """Parse recipe data from form submission."""
