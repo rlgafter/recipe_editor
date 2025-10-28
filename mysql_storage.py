@@ -141,6 +141,7 @@ class MySQLStorage:
             recipe.servings = recipe_data.get('servings')
             recipe.difficulty = recipe_data.get('difficulty')
             recipe.visibility = recipe_data.get('visibility', 'private')
+            recipe.ingredients_json = recipe_data.get('ingredients', [])  # Update ingredients JSON
             recipe.updated_at = datetime.utcnow()
             
             # Remove old ingredients
@@ -161,7 +162,8 @@ class MySQLStorage:
                 cook_time=recipe_data.get('cook_time'),
                 servings=recipe_data.get('servings'),
                 difficulty=recipe_data.get('difficulty'),
-                visibility=recipe_data.get('visibility', 'private')
+                visibility=recipe_data.get('visibility', 'private'),
+                ingredients_json=recipe_data.get('ingredients', [])  # Store ingredients as JSON
             )
             self.db.add(recipe)
             self.db.flush()  # Get recipe ID
@@ -308,10 +310,18 @@ class MySQLStorage:
     # TAG METHODS
     # ========================================================================
     
-    def get_all_tags(self) -> Dict[str, Tag]:
-        """Get all tags as dictionary."""
-        tags = self.db.query(Tag).all()
-        return {tag.name: tag for tag in tags}
+    def get_all_tags(self) -> Dict[str, Dict]:
+        """Get all tags with recipe counts."""
+        from sqlalchemy import func
+        from db_models import recipe_tags
+        
+        # Single query to get tag names and counts
+        query = self.db.query(Tag.name, func.count(recipe_tags.c.recipe_id).label('count'))\
+            .outerjoin(recipe_tags)\
+            .group_by(Tag.id, Tag.name)\
+            .all()
+        
+        return {tag_name: {'name': tag_name, 'count': count} for tag_name, count in query}
     
     def get_or_create_tag(self, name: str) -> Tag:
         """Get existing tag or create new one."""

@@ -338,17 +338,34 @@ main {
 
 /* Ingredient Rows */
 .ingredient-row {
-    background-color: var(--light-tan);
-    padding: 0.75rem;
-    border-radius: 0.375rem;
-    border: 1px solid var(--border-color);
-    margin-bottom: 0.5rem;
-    transition: all 0.2s;
+    margin-bottom: 0.25rem;
 }
 
-.ingredient-row:hover {
-    background-color: var(--medium-tan);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+/* Minimal Delete Buttons for Ingredients */
+.remove-ingredient {
+    background: none !important;
+    border: none !important;
+    padding: 0.25rem !important;
+    color: #dc3545 !important;
+    font-size: 1.3125rem; /* 50% larger than 0.875rem */
+    cursor: pointer;
+    transition: color 0.2s;
+    width: auto;
+    height: auto;
+    min-width: auto;
+    min-height: auto;
+}
+
+.remove-ingredient:hover {
+    color: #a71e2a !important;
+    background: none !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.remove-ingredient:focus {
+    outline: 2px solid #dc3545;
+    outline-offset: 2px;
 }
 
 /* Source Information */

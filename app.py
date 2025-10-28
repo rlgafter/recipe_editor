@@ -544,6 +544,27 @@ def _convert_unicode_fractions(amount: str) -> str:
     return amount.strip()
 
 
+def _trim_empty_ingredients_from_end(ingredients):
+    """Remove empty ingredients that are not followed by non-empty ingredients."""
+    if not ingredients:
+        return ingredients
+    
+    # Work backwards to find the last non-empty ingredient
+    last_non_empty_index = -1
+    for i in range(len(ingredients) - 1, -1, -1):
+        description = ingredients[i].description.strip() if hasattr(ingredients[i], 'description') else str(ingredients[i]).strip()
+        if description:
+            last_non_empty_index = i
+            break
+    
+    # If no non-empty ingredients found, return empty list
+    if last_non_empty_index == -1:
+        return []
+    
+    # Return ingredients up to and including the last non-empty one
+    return ingredients[:last_non_empty_index + 1]
+
+
 def _parse_recipe_form(form_data, recipe_id=None):
     """Parse recipe data from form submission."""
     # Get basic fields
@@ -582,6 +603,9 @@ def _parse_recipe_form(form_data, recipe_id=None):
             ingredients.append(ingredient)
         
         ingredient_count += 1
+    
+    # Trim empty ingredients that are not followed by non-empty ingredients
+    ingredients = _trim_empty_ingredients_from_end(ingredients)
     
     # Parse tags
     tags = []

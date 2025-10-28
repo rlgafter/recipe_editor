@@ -344,4 +344,111 @@ def register_admin_routes(app):
         logger.info("=== USER CREATION END ===")
         return redirect(url_for('admin_users'))
     
+    @app.route('/admin/recipes')
+    @login_required
+    @require_admin
+    def admin_recipes():
+        """Admin recipe management page."""
+        from db_models import Recipe, User
+        
+        logger.info("=== ADMIN RECIPES DEBUG START ===")
+        logger.info(f"Current user: {current_user.username} (ID: {current_user.id})")
+        logger.info(f"Request args: {dict(request.args)}")
+        
+        # Get search and filter parameters
+        search = request.args.get('search', '').strip()
+        user_filter = request.args.get('user', '').strip()
+        visibility_filter = request.args.get('visibility', '').strip()
+        page = int(request.args.get('page', 1))
+        per_page = 20
+        
+        logger.info(f"Search: '{search}', User: '{user_filter}', Visibility: '{visibility_filter}', Page: {page}")
+        
+        # Build query
+        query = Recipe.query
+        logger.info(f"Base query: {query}")
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                db.or_(
+                    Recipe.name.contains(search),
+                    Recipe.description.contains(search)
+                )
+            )
+            logger.info(f"Query after search filter: {query}")
+        
+        # Apply user filter
+        if user_filter:
+            query = query.filter(Recipe.user_id == user_filter)
+            logger.info(f"Query after user filter: {query}")
+        
+        # Apply visibility filter
+        if visibility_filter:
+            query = query.filter(Recipe.visibility == visibility_filter)
+            logger.info(f"Query after visibility filter: {query}")
+        
+        # Get total count for pagination
+        total = query.count()
+        pages = (total + per_page - 1) // per_page
+        logger.info(f"Total recipes matching query: {total}, Pages: {pages}")
+        
+        # Get recipes with pagination
+        pagination = query.order_by(Recipe.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        recipes = pagination.items
+        
+        logger.info(f"Recipes fetched: {len(recipes)}")
+        for i, recipe in enumerate(recipes):
+            logger.info(f"Recipe {i+1}: ID={recipe.id}, Name={recipe.name}, User ID={recipe.user_id}, Visibility={recipe.visibility}, Created={recipe.created_at}")
+        
+        # Get all users for filter dropdown
+        all_users = User.query.order_by(User.username).all()
+        
+        # Get recipe statistics
+        total_recipes = Recipe.query.count()
+        public_recipes = Recipe.query.filter_by(visibility='public').count()
+        private_recipes = Recipe.query.filter_by(visibility='private').count()
+        incomplete_recipes = Recipe.query.filter_by(visibility='incomplete').count()
+        
+        logger.info(f"Statistics - Total: {total_recipes}, Public: {public_recipes}, Private: {private_recipes}, Incomplete: {incomplete_recipes}")
+        
+        logger.info("=== ADMIN RECIPES DEBUG END ===")
+        
+        return render_template('admin_recipes.html',
+                             recipes=recipes,
+                             page=page,
+                             pages=pages,
+                             total=total,
+                             search=search,
+                             user_filter=user_filter,
+                             visibility_filter=visibility_filter,
+                             all_users=all_users,
+                             total_recipes=total_recipes,
+                             public_recipes=public_recipes,
+                             private_recipes=private_recipes,
+                             incomplete_recipes=incomplete_recipes)
+    
+    @app.route('/admin/recipes/<int:recipe_id>/delete', methods=['POST'])
+    @login_required
+    @require_admin
+    def admin_delete_recipe(recipe_id):
+        """Admin delete recipe (bypasses ownership checks)."""
+        from db_models import Recipe
+        
+        recipe = Recipe.query.get(recipe_id)
+        if not recipe:
+            flash('Recipe not found or already deleted', 'error')
+            return redirect(url_for('admin_recipes'))
+        
+        recipe_name = recipe.name
+        db.session.delete(recipe)
+        db.session.commit()
+        
+        logger.info(f"Admin {current_user.username} deleted recipe {recipe_id}: {recipe_name}")
+        flash(f'Recipe "{recipe_name}" deleted successfully', 'success')
+        
+        return redirect(url_for('admin_recipes'))
+    
     logger.info("Admin routes registered successfully")

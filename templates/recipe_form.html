@@ -2,6 +2,39 @@
 
 {% block title %}{% if recipe %}Edit {{ recipe.name }}{% else %}New Recipe{% endif %} - Recipe Editor{% endblock %}
 
+{% block extra_head %}
+<style>
+.form-label-sm {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Mobile optimizations for ingredient section */
+@media (max-width: 768px) {
+    .ingredient-row {
+        margin-bottom: 0.5rem;
+    }
+    
+    .ingredient-row .col-md-2,
+    .ingredient-row .col-md-7 {
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Make buttons more touch-friendly on mobile */
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Ensure toggle button is easily tappable */
+    #toggleIngredientsBtn {
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-lg-8 mx-auto">
@@ -78,13 +111,17 @@
         </div>
         {% endif %}
         
-        <form method="POST" id="recipeForm">
+        <form method="POST" id="recipeForm" action="{% if recipe %}{{ url_for('recipe_edit', recipe_id=recipe.id) }}{% else %}{{ url_for('recipe_new') }}{% endif %}">
             <div class="card shadow-sm">
                 <div class="card-body">
                     <!-- Recipe Name -->
                     <div class="mb-3">
                         <label for="name" class="form-label">
                             Recipe Name <span class="text-danger">*</span>
+                            <i class="bi bi-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Enter a descriptive name for your recipe (e.g., 'Grandma's Chocolate Chip Cookies')"></i>
                         </label>
                         <input type="text" 
                                class="form-control" 
@@ -92,32 +129,36 @@
                                name="name" 
                                value="{% if recipe %}{{ recipe.name }}{% endif %}"
                                required
-                               maxlength="200">
+                               maxlength="200"
+                               autocomplete="off">
                     </div>
                     
                     <!-- Source Information -->
-                    <div class="mb-4 p-3 bg-light rounded">
-                        <h5 class="mb-3">
-                            <i class="bi bi-book"></i> Source Information
-                        </h5>
-                        
+                    <h5 class="mb-1">
+                        <i class="bi bi-book"></i> Source Information
+                        <i class="bi bi-question-circle text-muted ms-1" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Where did the recipe come from? You must at least provide the publication, author (can be you) or URL"></i>
+                    </h5>
+                    <div class="mb-2">
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="source_name" class="form-label">
-                                    Source Name <span class="text-danger">*</span>
+                            <div class="col-md-6 mb-1">
+                                <label for="source_name" class="form-label form-label-sm">
+                                    Source Name
                                 </label>
                                 <input type="text" 
                                        class="form-control" 
                                        id="source_name" 
                                        name="source_name" 
-                                       value="{% if recipe and recipe.source %}{{ recipe.source.name }}{% endif %}"
-                                       required
+                                       value="{% if recipe and recipe.source %}{{ recipe.source.source_name }}{% endif %}"
                                        maxlength="200"
-                                       placeholder="e.g., Ricki, Mom's Cookbook">
+                                       placeholder="e.g., Ricki, Mom's Cookbook"
+                                       autocomplete="off">
                             </div>
                             
-                            <div class="col-md-6 mb-3">
-                                <label for="source_author" class="form-label">
+                            <div class="col-md-6 mb-1">
+                                <label for="source_author" class="form-label form-label-sm">
                                     Author
                                 </label>
                                 <input type="text" 
@@ -126,29 +167,36 @@
                                        name="source_author" 
                                        value="{% if recipe and recipe.source %}{{ recipe.source.author }}{% endif %}"
                                        maxlength="200"
-                                       placeholder="e.g., Jane Smith (optional)">
+                                       placeholder="e.g., Jane Smith (optional)"
+                                       autocomplete="off">
                             </div>
                         </div>
                         
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="source_url" class="form-label">
+                            <div class="col-md-6 mb-1">
+                                <label for="source_url" class="form-label form-label-sm">
                                     URL
+                                    <i class="bi bi-question-circle text-muted ms-1" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Must start with http:// or https://"></i>
                                 </label>
                                 <input type="url" 
                                        class="form-control" 
                                        id="source_url" 
                                        name="source_url" 
-                                       value="{% if recipe and recipe.source %}{{ recipe.source.url }}{% endif %}"
-                                       placeholder="https://example.com (optional)">
-                                <div class="form-text">
-                                    <small>Must start with http:// or https://</small>
-                                </div>
+                                       value="{% if recipe and recipe.source %}{{ recipe.source.source_url }}{% endif %}"
+                                       placeholder="https://example.com (optional)"
+                                       autocomplete="url">
                             </div>
                             
-                            <div class="col-md-6 mb-3">
-                                <label for="source_issue" class="form-label">
+                            <div class="col-md-6 mb-1">
+                                <label for="source_issue" class="form-label form-label-sm">
                                     Issue/Edition
+                                    <i class="bi bi-question-circle text-muted ms-1" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="For magazines or periodic publications"></i>
                                 </label>
                                 <input type="text" 
                                        class="form-control" 
@@ -156,10 +204,78 @@
                                        name="source_issue" 
                                        value="{% if recipe and recipe.source %}{{ recipe.source.issue }}{% endif %}"
                                        maxlength="100"
-                                       placeholder="e.g., Fall 2024, Issue 42 (optional)">
-                                <div class="form-text">
-                                    <small>For magazines or periodic publications</small>
+                                       placeholder="e.g., Fall 2024, Issue 42 (optional)"
+                                       autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Time and Serving Information -->
+                    <div class="mb-3">
+                        <h5 class="mb-2">
+                            <i class="bi bi-clock"></i> Time & Serving Information
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <label for="prep_time" class="form-label">
+                                    Prep Time
+                                    <i class="bi bi-question-circle text-muted ms-1" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Time needed for preparation (in minutes). Optional."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="prep_time" 
+                                           name="prep_time" 
+                                           value="{% if recipe %}{{ recipe.prep_time }}{% endif %}"
+                                           min="0" 
+                                           max="9999"
+                                           placeholder="30"
+                                           autocomplete="off">
+                                    <span class="input-group-text">min</span>
                                 </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-2">
+                                <label for="cook_time" class="form-label">
+                                    Cook Time
+                                    <i class="bi bi-question-circle text-muted ms-1" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Time needed for cooking (in minutes). Optional."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="cook_time" 
+                                           name="cook_time" 
+                                           value="{% if recipe %}{{ recipe.cook_time }}{% endif %}"
+                                           min="0" 
+                                           max="9999"
+                                           placeholder="45"
+                                           autocomplete="off">
+                                    <span class="input-group-text">min</span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-2">
+                                <label for="servings" class="form-label">
+                                    Servings:
+                                    <i class="bi bi-question-circle text-muted ms-1" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Number of servings (e.g., 4, 2-4, Serves 6). Optional."></i>
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="servings" 
+                                       name="servings" 
+                                       value="{% if recipe %}{{ recipe.servings }}{% endif %}"
+                                       maxlength="50"
+                                       placeholder="4"
+                                       autocomplete="off">
                             </div>
                         </div>
                     </div>
@@ -168,26 +284,33 @@
                     <div class="mb-3">
                         <label class="form-label">
                             Ingredients <span class="text-danger">*</span>
-                            <small class="text-muted">(at least one required)</small>
+                            <small class="text-muted">(at least 3 required)</small>
+                            <i class="bi bi-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Add at least 3 ingredients. Amounts are optional - just describe the ingredient if no specific quantity is needed. Amount examples: 1, 1/2, 2.5, 1 1/2 (range: 0-1000)"></i>
                         </label>
                         <div id="ingredientsList">
                             {% if recipe and recipe.ingredients %}
+                                <!-- Show existing recipe ingredients -->
                                 {% for ingredient in recipe.ingredients %}
-                                    <div class="ingredient-row mb-2">
+                                    <div class="ingredient-row mb-1">
                                         <div class="row g-2">
                                             <div class="col-md-2">
                                                 <input type="text" 
                                                        class="form-control form-control-sm" 
                                                        name="ingredient_amount_{{ loop.index0 }}" 
                                                        placeholder="Amount"
-                                                       value="{{ ingredient.amount }}">
+                                                       value="{{ ingredient.amount }}"
+                                                       autocomplete="off">
                                             </div>
                                             <div class="col-md-2">
                                                 <input type="text" 
                                                        class="form-control form-control-sm" 
                                                        name="ingredient_unit_{{ loop.index0 }}" 
                                                        placeholder="Unit"
-                                                       value="{{ ingredient.unit }}">
+                                                       value="{{ ingredient.unit }}"
+                                                       autocomplete="off">
                                             </div>
                                             <div class="col-md-7">
                                                 <input type="text" 
@@ -195,59 +318,109 @@
                                                        name="ingredient_description_{{ loop.index0 }}" 
                                                        placeholder="Ingredient description *"
                                                        value="{{ ingredient.description }}"
-                                                       required>
+                                                       autocomplete="off">
                                             </div>
                                             <div class="col-md-1">
-                                                <button type="button" class="btn btn-sm btn-danger remove-ingredient" onclick="removeIngredient(this)">
-                                                    <i class="bi bi-x"></i>
+                                                <button type="button" class="remove-ingredient" onclick="removeIngredient(this)">
+                                                    ×
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
                                 {% endfor %}
                             {% else %}
-                                <!-- Default first ingredient -->
-                                <div class="ingredient-row mb-2">
+                                <!-- Default 5 empty ingredients for new recipes (always visible) -->
+                                {% for i in range(5) %}
+                                <div class="ingredient-row mb-1">
                                     <div class="row g-2">
                                         <div class="col-md-2">
                                             <input type="text" 
                                                    class="form-control form-control-sm" 
-                                                   name="ingredient_amount_0" 
-                                                   placeholder="Amount">
+                                                   name="ingredient_amount_{{ i }}" 
+                                                   placeholder="Amount"
+                                                   autocomplete="off">
                                         </div>
                                         <div class="col-md-2">
                                             <input type="text" 
                                                    class="form-control form-control-sm" 
-                                                   name="ingredient_unit_0" 
-                                                   placeholder="Unit">
+                                                   name="ingredient_unit_{{ i }}" 
+                                                   placeholder="Unit"
+                                                   autocomplete="off">
                                         </div>
                                         <div class="col-md-7">
                                             <input type="text" 
                                                    class="form-control form-control-sm" 
-                                                   name="ingredient_description_0" 
+                                                   name="ingredient_description_{{ i }}" 
                                                    placeholder="Ingredient description *"
-                                                   required>
+                                                   autocomplete="off">
                                         </div>
                                         <div class="col-md-1">
-                                            <button type="button" class="btn btn-sm btn-danger remove-ingredient" onclick="removeIngredient(this)">
-                                                <i class="bi bi-x"></i>
+                                            <button type="button" class="remove-ingredient" onclick="removeIngredient(this)">
+                                                ×
                                             </button>
                                         </div>
                                     </div>
+                                </div>
+                                {% endfor %}
+                                
+                                <!-- Additional 3 ingredients (initially hidden) -->
+                                <div id="additionalIngredients" style="display: none;">
+                                    {% for i in range(5, 8) %}
+                                    <div class="ingredient-row mb-1">
+                                        <div class="row g-2">
+                                            <div class="col-md-2">
+                                                <input type="text" 
+                                                       class="form-control form-control-sm" 
+                                                       name="ingredient_amount_{{ i }}" 
+                                                       placeholder="Amount"
+                                                       autocomplete="off">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <input type="text" 
+                                                       class="form-control form-control-sm" 
+                                                       name="ingredient_unit_{{ i }}" 
+                                                       placeholder="Unit"
+                                                       autocomplete="off">
+                                            </div>
+                                            <div class="col-md-7">
+                                                <input type="text" 
+                                                       class="form-control form-control-sm" 
+                                                       name="ingredient_description_{{ i }}" 
+                                                       placeholder="Ingredient description *"
+                                                       autocomplete="off">
+                                            </div>
+                                            <div class="col-md-1">
+                                                <button type="button" class="remove-ingredient" onclick="removeIngredient(this)">
+                                                    ×
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                
+                                <!-- Toggle button for additional ingredients -->
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAdditionalIngredients()" id="toggleIngredientsBtn">
+                                        <i class="bi bi-chevron-down"></i> Show 3 more ingredients
+                                    </button>
                                 </div>
                             {% endif %}
                         </div>
                         <button type="button" class="btn btn-sm btn-success mt-2" onclick="addIngredient()">
                             <i class="bi bi-plus"></i> Add Ingredient
                         </button>
-                        <div class="form-text">
-                            <small>Amount examples: 1, 1/2, 2.5, 1 1/2 (range: 0-1000)</small>
-                        </div>
                     </div>
                     
                     <!-- Instructions -->
                     <div class="mb-3">
-                        <label for="instructions" class="form-label">Instructions</label>
+                        <label for="instructions" class="form-label">
+                            Instructions
+                            <i class="bi bi-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Describe how to make the recipe. Use line breaks to separate steps. Be as detailed as needed."></i>
+                        </label>
                         <textarea class="form-control" 
                                   id="instructions" 
                                   name="instructions" 
@@ -267,7 +440,13 @@
                     
                     <!-- Visibility -->
                     <div class="mb-3">
-                        <label for="visibility" class="form-label">Visibility</label>
+                        <label for="visibility" class="form-label">
+                            Visibility
+                            <i class="bi bi-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Choose who can see your recipe: Incomplete (work in progress), Private (only you), or Public (all users)"></i>
+                        </label>
                         {% if current_user.can_publish_public_recipes() %}
                             <!-- Show all options to users with permission -->
                             <select name="visibility" id="visibility" class="form-select">
@@ -302,7 +481,13 @@
                     
                     <!-- Tags -->
                     <div class="mb-3">
-                        <label class="form-label">Tags</label>
+                        <label class="form-label">
+                            Tags
+                            <i class="bi bi-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Add tags to help categorize your recipe. You can type comma-separated tags or select from existing ones below."></i>
+                        </label>
                         
                         {% if all_tags %}
                             <div class="mb-2">
@@ -314,7 +499,7 @@
                                                    type="checkbox" 
                                                    name="tag_{{ tag_name }}" 
                                                    id="tag_{{ tag_name }}"
-                                                   {% if recipe and tag_name in recipe.tags %}checked{% endif %}>
+                                                   {% if recipe and recipe.tags and tag_name in recipe.tags|map(attribute='name') %}checked{% endif %}>
                                             <label class="form-check-label" for="tag_{{ tag_name }}">
                                                 {{ tag_name }}
                                             </label>
@@ -322,16 +507,23 @@
                                     {% endfor %}
                                 </div>
                             </div>
+                        {% else %}
+                            <div class="mb-2">
+                                <small class="text-muted">No existing tags found. Create some tags by entering them below.</small>
+                            </div>
                         {% endif %}
                         
                         <div>
-                            <small class="text-muted">Or enter new tags (comma-separated):</small>
+                            <label for="tags" class="form-label">
+                                <small class="text-muted">Or enter new tags (comma-separated):</small>
+                            </label>
                             <input type="text" 
                                    class="form-control mt-1" 
                                    name="tags" 
                                    id="tags"
                                    placeholder="e.g., dessert, chocolate, quick"
-                                   value="{% if recipe and new_tags %}{{ new_tags|join(', ') }}{% endif %}">
+                                   value="{% if recipe and new_tags %}{{ new_tags|join(', ') }}{% endif %}"
+                                   autocomplete="off">
                         </div>
                         <div class="form-text">
                             Tags are case-insensitive (stored as uppercase) and help organize your recipes
@@ -350,20 +542,88 @@
                    class="btn btn-secondary">
                     <i class="bi bi-x-circle"></i> Cancel
                 </a>
+                {% if recipe and current_user.can_delete_recipe(recipe) %}
+                <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="bi bi-trash"></i> Delete Recipe
+                </button>
+                {% endif %}
             </div>
         </form>
     </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+{% if recipe and current_user.can_delete_recipe(recipe) %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the recipe <strong>"{{ recipe.name }}"</strong>?</p>
+                <p class="text-muted">This action cannot be undone.</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This will permanently delete the recipe and all its data.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('recipe_delete', recipe_id=recipe.id) }}" style="display: inline;" id="deleteForm">
+                    <button type="submit" class="btn btn-danger" id="deleteButton">
+                        <span class="button-text">Delete Recipe</span>
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteForm = document.getElementById('deleteForm');
+    const deleteButton = document.getElementById('deleteButton');
+    
+    if (deleteForm && deleteButton) {
+        const buttonText = deleteButton.querySelector('.button-text');
+        const spinner = deleteButton.querySelector('.spinner-border');
+        
+        deleteForm.addEventListener('submit', function(e) {
+            // Prevent double submission
+            if (deleteButton.disabled) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Disable button and show loading state
+            deleteButton.disabled = true;
+            buttonText.textContent = 'Deleting...';
+            spinner.classList.remove('d-none');
+            
+            // Re-enable after 5 seconds as fallback
+            setTimeout(function() {
+                deleteButton.disabled = false;
+                buttonText.textContent = 'Delete Recipe';
+                spinner.classList.add('d-none');
+            }, 5000);
+        });
+    }
+});
+</script>
+{% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-let ingredientIndex = {{ recipe.ingredients|length if recipe else 1 }};
+let ingredientIndex = {{ recipe.ingredients|length if recipe else 8 }};
 
 function addIngredient() {
     const ingredientsList = document.getElementById('ingredientsList');
     const newRow = document.createElement('div');
-    newRow.className = 'ingredient-row mb-2';
+    newRow.className = 'ingredient-row mb-1';
     newRow.innerHTML = `
         <div class="row g-2">
             <div class="col-md-2">
@@ -386,8 +646,8 @@ function addIngredient() {
                        required>
             </div>
             <div class="col-md-1">
-                <button type="button" class="btn btn-sm btn-danger remove-ingredient" onclick="removeIngredient(this)">
-                    <i class="bi bi-x"></i>
+                <button type="button" class="remove-ingredient" onclick="removeIngredient(this)">
+                    ×
                 </button>
             </div>
         </div>
@@ -400,11 +660,25 @@ function removeIngredient(button) {
     const ingredientsList = document.getElementById('ingredientsList');
     const ingredientRows = ingredientsList.getElementsByClassName('ingredient-row');
     
-    // Keep at least one ingredient row
-    if (ingredientRows.length > 1) {
+    // Keep at least 3 ingredient rows
+    if (ingredientRows.length > 3) {
         button.closest('.ingredient-row').remove();
     } else {
-        alert('You must have at least one ingredient.');
+        alert('You must have at least 3 ingredients.');
+    }
+}
+
+function toggleAdditionalIngredients() {
+    const additionalDiv = document.getElementById('additionalIngredients');
+    const button = document.getElementById('toggleIngredientsBtn');
+    const icon = button.querySelector('i');
+    
+    if (additionalDiv.style.display === 'none') {
+        additionalDiv.style.display = 'block';
+        button.innerHTML = '<i class="bi bi-chevron-up"></i> Show fewer ingredients';
+    } else {
+        additionalDiv.style.display = 'none';
+        button.innerHTML = '<i class="bi bi-chevron-down"></i> Show 3 more ingredients';
     }
 }
 
@@ -596,7 +870,7 @@ function populateForm(recipeData) {
         
         recipeData.ingredients.forEach((ingredient, index) => {
             const newRow = document.createElement('div');
-            newRow.className = 'ingredient-row mb-2';
+            newRow.className = 'ingredient-row mb-1';
             newRow.innerHTML = `
                 <div class="row g-2">
                     <div class="col-md-2">
@@ -622,8 +896,8 @@ function populateForm(recipeData) {
                                required>
                     </div>
                     <div class="col-md-1">
-                        <button type="button" class="btn btn-sm btn-danger remove-ingredient" onclick="removeIngredient(this)">
-                            <i class="bi bi-x"></i>
+                        <button type="button" class="remove-ingredient" onclick="removeIngredient(this)">
+                            ×
                         </button>
                     </div>
                 </div>
@@ -684,6 +958,35 @@ function showImportError(message) {
     // DO NOT auto-hide - let error message stay visible until manually dismissed or page navigation
     // User requested all messages stay on screen
 }
+
+// Initialize tooltips with both hover and click functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            trigger: 'hover focus click', // Enable hover, focus, and click
+            delay: { "show": 200, "hide": 100 }
+        });
+    });
+    
+    // Re-initialize tooltips when new content is added dynamically
+    window.reinitializeTooltips = function() {
+        // Destroy existing tooltips
+        tooltipList.forEach(function(tooltip) {
+            tooltip.dispose();
+        });
+        
+        // Re-initialize
+        tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl, {
+                trigger: 'hover focus click',
+                delay: { "show": 200, "hide": 100 }
+            });
+        });
+    };
+});
 {% endif %}
 </script>
 {% endblock %}

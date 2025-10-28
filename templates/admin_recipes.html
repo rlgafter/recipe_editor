@@ -1,0 +1,297 @@
+{% extends "base_mysql.html" %}
+
+{% block title %}Admin Recipe Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-shield-check"></i> Admin Recipe Management</h1>
+                <div>
+                    <span class="badge bg-primary">Administrator</span>
+                </div>
+            </div>
+            
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ total_recipes }}</h4>
+                                    <p class="mb-0">Total Recipes</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-book"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ public_recipes }}</h4>
+                                    <p class="mb-0">Public Recipes</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-globe"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ private_recipes }}</h4>
+                                    <p class="mb-0">Private Recipes</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-lock"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ incomplete_recipes }}</h4>
+                                    <p class="mb-0">Incomplete Recipes</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-clock"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search and Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search }}" placeholder="Search by name or description...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="user" class="form-label">User</label>
+                            <select class="form-select" id="user" name="user">
+                                <option value="">All Users</option>
+                                {% for user in all_users %}
+                                <option value="{{ user.id }}" {% if user_filter == user.id|string %}selected{% endif %}>
+                                    {{ user.username }} ({{ user.display_name or user.username }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="visibility" class="form-label">Visibility</label>
+                            <select class="form-select" id="visibility" name="visibility">
+                                <option value="">All Visibility</option>
+                                <option value="public" {% if visibility_filter == 'public' %}selected{% endif %}>Public</option>
+                                <option value="private" {% if visibility_filter == 'private' %}selected{% endif %}>Private</option>
+                                <option value="incomplete" {% if visibility_filter == 'incomplete' %}selected{% endif %}>Incomplete</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">Filter</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Recipes Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list"></i> Recipes 
+                        <span class="badge bg-secondary">{{ total }} total</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recipes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Owner</th>
+                                    <th>Visibility</th>
+                                    <th>Created</th>
+                                    <th>Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for recipe in recipes %}
+                                <tr>
+                                    <td>{{ recipe.id }}</td>
+                                    <td>
+                                        <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}" class="text-decoration-none">
+                                            {{ recipe.name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if recipe.user.is_admin else 'primary' }}">
+                                            {{ recipe.user.username }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if recipe.visibility == 'public' else 'warning' if recipe.visibility == 'private' else 'info' }}">
+                                            {{ recipe.visibility.title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ recipe.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ recipe.updated_at.strftime('%Y-%m-%d %H:%M') if recipe.updated_at else 'Never' }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}" 
+                                               class="btn btn-outline-primary" title="View">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" 
+                                               class="btn btn-outline-secondary" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" 
+                                                    class="btn btn-outline-danger" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#deleteModal{{ recipe.id }}" 
+                                                    title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if pages > 1 %}
+                    <nav aria-label="Recipe pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page > 1 %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page - 1 }}{% if search %}&search={{ search }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if visibility_filter %}&visibility={{ visibility_filter }}{% endif %}">Previous</a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for p in range(1, pages + 1) %}
+                            {% if p == page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ p }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ p }}{% if search %}&search={{ search }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if visibility_filter %}&visibility={{ visibility_filter }}{% endif %}">{{ p }}</a>
+                            </li>
+                            {% endif %}
+                            {% endfor %}
+                            
+                            {% if page < pages %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page + 1 }}{% if search %}&search={{ search }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if visibility_filter %}&visibility={{ visibility_filter }}{% endif %}">Next</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-book text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="text-muted mt-3">No recipes found</h5>
+                        <p class="text-muted">Try adjusting your search criteria.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modals -->
+{% for recipe in recipes %}
+<div class="modal fade" id="deleteModal{{ recipe.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the recipe <strong>"{{ recipe.name }}"</strong>?</p>
+                <p class="text-muted">This action cannot be undone.</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This will permanently delete the recipe and all its data.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('admin_delete_recipe', recipe_id=recipe.id) }}" style="display: inline;" class="admin-delete-form">
+                    <button type="submit" class="btn btn-danger admin-delete-button" data-recipe-id="{{ recipe.id }}">
+                        <span class="button-text">Delete Recipe</span>
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteForms = document.querySelectorAll('.admin-delete-form');
+    
+    deleteForms.forEach(function(form) {
+        const deleteButton = form.querySelector('.admin-delete-button');
+        const buttonText = deleteButton.querySelector('.button-text');
+        const spinner = deleteButton.querySelector('.spinner-border');
+        
+        form.addEventListener('submit', function(e) {
+            // Prevent double submission
+            if (deleteButton.disabled) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Disable button and show loading state
+            deleteButton.disabled = true;
+            buttonText.textContent = 'Deleting...';
+            spinner.classList.remove('d-none');
+            
+            // Re-enable after 5 seconds as fallback
+            setTimeout(function() {
+                deleteButton.disabled = false;
+                buttonText.textContent = 'Delete Recipe';
+                spinner.classList.add('d-none');
+            }, 5000);
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -230,6 +230,7 @@ class Recipe(db.Model):
     visibility = db.Column(db.Enum('private', 'public', 'incomplete'), default='incomplete')
     slug = db.Column(db.String(250), unique=True)
     meta_description = db.Column(db.String(300))
+    ingredients_json = db.Column(JSON)  # Store ingredients as JSON to preserve empty positions
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     published_at = db.Column(db.DateTime)
@@ -254,8 +255,11 @@ class Recipe(db.Model):
     
     @property
     def ingredients(self):
-        """Alias for recipe_ingredients to maintain compatibility with templates."""
-        return self.recipe_ingredients
+        """Get ingredients from JSON field, preserving empty positions."""
+        if self.ingredients_json:
+            return self.ingredients_json
+        # Fallback to old recipe_ingredients for backward compatibility
+        return [ing.to_dict() for ing in self.recipe_ingredients]
     
     def can_view(self, user):
         """Check if a user can view this recipe."""
