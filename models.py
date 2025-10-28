@@ -148,9 +148,16 @@ class Recipe:
             if ing.amount and not self._is_valid_amount(ing.amount):
                 errors.append(f"Ingredient {i+1}: Invalid amount '{ing.amount}'. Use numbers or fractions (e.g., 1/2, 2.5)")
         
-        # Validate source information
-        if not self.source or not self.source.get('name', '').strip():
-            errors.append("Source name is required")
+        # Validate source information - at least one of name, author, or URL required
+        if self.source:
+            has_name = self.source.get('name', '').strip()
+            has_author = self.source.get('author', '').strip()
+            has_url = self.source.get('url', '').strip()
+            
+            if not (has_name or has_author or has_url):
+                errors.append("Please provide the recipe's provenance (source name, author, or URL)")
+        else:
+            errors.append("Please provide the recipe's provenance (source name, author, or URL)")
         
         # Validate URL if provided
         source_url = self.source.get('url', '').strip() if self.source else ''

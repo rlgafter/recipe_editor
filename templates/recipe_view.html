@@ -33,65 +33,104 @@
                 <!-- Recipe Header -->
                 <h1 class="card-title mb-3">{{ recipe.name }}</h1>
                 
-        <!-- Source and Submitter Information -->
-        <div class="mb-3" style="padding: 8px 0; font-size: 0.9em;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    {% if recipe.source and recipe.source.source_name %}
-                        <span class="text-muted"><strong>Source:</strong></span> 
-                        {% if recipe.source.source_url %}
-                            <a href="{{ recipe.source.source_url }}" target="_blank" class="text-decoration-none">
-                                <span class="text-muted">{{ recipe.source.source_name }}</span>
-                                {% if recipe.source.author %}
-                                    <span class="text-muted">by {{ recipe.source.author }}</span>
-                                {% endif %}
-                                {% if recipe.source.issue %}
-                                    <span class="text-muted">Issue: {{ recipe.source.issue }}</span>
-                                {% endif %}
-                            </a>
-                        {% else %}
-                            <span class="text-muted">{{ recipe.source.source_name }}</span>
-                            {% if recipe.source.author %}
-                                <span class="text-muted">by {{ recipe.source.author }}</span>
-                            {% endif %}
-                            {% if recipe.source.issue %}
-                                <span class="text-muted">Issue: {{ recipe.source.issue }}</span>
-                            {% endif %}
+                <!-- Submitter and Tags Information -->
+                <div style="padding: 2px 0; font-size: 0.85em;">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                        {% if submitter %}
+                            <div class="text-muted">
+                                <strong>By:</strong> {{ submitter.display_name or submitter.username }}
+                            </div>
                         {% endif %}
-                    {% endif %}
-                </div>
-                {% if submitter %}
-                    <div class="text-muted">
-                        <strong>Submitted By:</strong> {{ submitter.display_name or submitter.username }}
+                        {% if recipe.tags %}
+                            <div class="text-muted mt-1 mt-md-0">
+                                <strong>Tags:</strong> 
+                                {% for tag in recipe.tags %}
+                                    {{ tag.name }}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
+                </div>
+                
+                <!-- Time and Serving Information -->
+                {% if recipe.prep_time or recipe.cook_time or recipe.servings %}
+                <div class="mb-3">
+                    <div class="row">
+                        {% if recipe.prep_time %}
+                        <div class="col-md-4">
+                            <span class="text-muted">
+                                <i class="bi bi-clock"></i> <strong>Prep:</strong> {{ recipe.prep_time }} min
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if recipe.cook_time %}
+                        <div class="col-md-4">
+                            <span class="text-muted">
+                                <i class="bi bi-fire"></i> <strong>Cook:</strong> {{ recipe.cook_time }} min
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if recipe.servings %}
+                        <div class="col-md-4">
+                            <span class="text-muted">
+                                <i class="bi bi-people"></i> <strong>Servings:</strong> {{ recipe.servings }}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+        <!-- Source Information -->
+        {% if recipe.source and (recipe.source.source_name or recipe.source.author or recipe.source.source_url) %}
+        <div class="mb-2" style="padding: 2px 0; font-size: 0.85em;">
+            <div class="text-muted">
+                <span class="text-muted"><strong>Source:</strong></span> 
+                {% if recipe.source.source_url %}
+                    <a href="{{ recipe.source.source_url }}" target="_blank" class="text-decoration-none">
+                        {% if recipe.source.source_name %}
+                            <span class="text-muted">{{ recipe.source.source_name }}</span>
+                        {% endif %}
+                        {% if recipe.source.author %}
+                            <span class="text-muted">by {{ recipe.source.author }}</span>
+                        {% endif %}
+                        {% if recipe.source.issue %}
+                            <span class="text-muted">Issue: {{ recipe.source.issue }}</span>
+                        {% endif %}
+                    </a>
+                {% else %}
+                    {% if recipe.source.source_name %}
+                        <span class="text-muted">{{ recipe.source.source_name }}</span>
+                    {% endif %}
+                    {% if recipe.source.author %}
+                        <span class="text-muted">by {{ recipe.source.author }}</span>
+                    {% endif %}
+                    {% if recipe.source.issue %}
+                        <span class="text-muted">Issue: {{ recipe.source.issue }}</span>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
-                
-                <!-- Tags -->
-                {% if recipe.tags %}
-                    <div class="mb-3">
-                        {% for tag in recipe.tags %}
-                            <span class="badge bg-primary me-1">{{ tag }}</span>
-                        {% endfor %}
-                    </div>
-                {% endif %}
+        {% endif %}
                 
                 <!-- Action Buttons -->
                 <div class="mb-4 no-print">
-                    <div class="d-flex gap-2 flex-wrap">
+                    <div class="d-flex gap-2 flex-wrap justify-content-end">
+                        {% if current_user.can_edit_recipe(recipe) %}
                         <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" class="btn btn-sm btn-primary" style="padding: 0.25rem 0.5rem;">
                             Edit
                         </a>
+                        {% endif %}
                         <button type="button" class="btn btn-sm btn-secondary" onclick="window.print()" style="padding: 0.25rem 0.5rem;">
                             Print
                         </button>
                         <a href="{{ url_for('recipe_email', recipe_id=recipe.id) }}" class="btn btn-sm btn-success" style="padding: 0.25rem 0.5rem;">
                             Email
                         </a>
+                        {% if current_user.can_delete_recipe(recipe) %}
                         <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" style="padding: 0.25rem 0.5rem;">
                             Delete
                         </button>
+                        {% endif %}
                     </div>
                 </div>
                 
@@ -99,15 +138,17 @@
                 <h2 class="mt-4 mb-3">Ingredients</h2>
                 <ul class="list-unstyled mb-4" style="line-height: 1.6;">
                     {% for ingredient in recipe.ingredients %}
-                        <li style="margin-bottom: 0.3rem;">
-                            {% if ingredient.amount %}
-                                <strong>{{ ingredient.amount }}</strong>
-                            {% endif %}
-                            {% if ingredient.unit %}
-                                <span class="text-muted">{{ ingredient.unit }}</span>
-                            {% endif %}
-                            {{ ingredient.description }}
-                        </li>
+                        {% if not ingredient.is_empty and ingredient.description %}
+                            <li style="margin-bottom: 0.3rem;">
+                                {% if ingredient.amount %}
+                                    <strong>{{ ingredient.amount }}</strong>
+                                {% endif %}
+                                {% if ingredient.unit %}
+                                    <span class="text-muted">{{ ingredient.unit }}</span>
+                                {% endif %}
+                                {{ ingredient.description }}
+                            </li>
+                        {% endif %}
                     {% endfor %}
                 </ul>
                 
@@ -139,16 +180,11 @@
                 </div>
             </div>
         </div>
-        
-        <div class="mt-3 no-print">
-            <a href="{{ url_for('recipe_list') }}" class="btn btn-sm btn-outline-secondary">
-                ← Back to Recipes
-            </a>
-        </div>
     </div>
 </div>
 
 <!-- Delete Confirmation Modal -->
+{% if current_user.can_delete_recipe(recipe) %}
 <div class="modal fade no-print" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -161,12 +197,47 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="POST" action="{{ url_for('recipe_delete', recipe_id=recipe.id) }}" style="display: inline;">
-                    <button type="submit" class="btn btn-danger">Delete Recipe</button>
+                <form method="POST" action="{{ url_for('recipe_delete', recipe_id=recipe.id) }}" style="display: inline;" id="deleteForm">
+                    <button type="submit" class="btn btn-danger" id="deleteButton">
+                        <span class="button-text">Delete Recipe</span>
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteForm = document.getElementById('deleteForm');
+    const deleteButton = document.getElementById('deleteButton');
+    const buttonText = deleteButton.querySelector('.button-text');
+    const spinner = deleteButton.querySelector('.spinner-border');
+    
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', function(e) {
+            // Prevent double submission
+            if (deleteButton.disabled) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Disable button and show loading state
+            deleteButton.disabled = true;
+            buttonText.textContent = 'Deleting...';
+            spinner.classList.remove('d-none');
+            
+            // Re-enable after 5 seconds as fallback
+            setTimeout(function() {
+                deleteButton.disabled = false;
+                buttonText.textContent = 'Delete Recipe';
+                spinner.classList.add('d-none');
+            }, 5000);
+        });
+    }
+});
+</script>
+{% endif %}
 {% endblock %}
 

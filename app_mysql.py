@@ -442,15 +442,28 @@ def recipe_new():
     
     # POST - Create new recipe
     try:
+        app.logger.info("=== RECIPE CREATION DEBUG START ===")
+        app.logger.info(f"Form data keys: {list(request.form.keys())}")
+        
         recipe_data = _parse_recipe_form(request.form)
+        app.logger.info(f"Parsed recipe data: name='{recipe_data.get('name')}', ingredients_count={len(recipe_data.get('ingredients', []))}")
+        
+        # Log each ingredient
+        for i, ing in enumerate(recipe_data.get('ingredients', [])):
+            app.logger.info(f"  Ingredient {i+1}: desc='{ing.get('description')}', amount='{ing.get('amount')}', unit='{ing.get('unit')}'")
         
         # Validate recipe data
         is_valid, errors = _validate_recipe_data(recipe_data)
+        app.logger.info(f"Validation result: {'PASS' if is_valid else 'FAIL'}")
+        if errors:
+            app.logger.info(f"Validation errors: {errors}")
+        
         if not is_valid:
             for error in errors:
                 flash(error, 'error')
             all_tags = storage.get_all_tags()
             gemini_configured = gemini_service.is_configured()
+            app.logger.info("=== RECIPE CREATION DEBUG END (VALIDATION FAILED) ===")
             return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
                                  new_tags=[], gemini_configured=gemini_configured), 400
         
@@ -467,11 +480,15 @@ def recipe_new():
         
         flash(f'Recipe "{recipe.name}" created successfully!', 'success')
         app.logger.info(f"Created new recipe {recipe.id}: {recipe.name}")
+        app.logger.info("=== RECIPE CREATION DEBUG END (SUCCESS) ===")
         
         return redirect(url_for('recipe_view', recipe_id=recipe.id))
     
     except Exception as e:
         app.logger.error(f"Error creating recipe: {str(e)}")
+        app.logger.error("=== RECIPE CREATION DEBUG END (EXCEPTION) ===")
+        import traceback
+        app.logger.error(f"Traceback: {traceback.format_exc()}")
         flash('Error creating recipe. Please try again.', 'error')
         all_tags = storage.get_all_tags()
         gemini_configured = gemini_service.is_configured()
@@ -524,6 +541,7 @@ def recipe_edit(recipe_id):
         
         storage.save_recipe(recipe_data, current_user.id, recipe_id=recipe_id)
         
+        app.logger.info(f"Updated recipe {recipe_id}: {recipe.name}")
         flash(f'Recipe "{recipe.name}" updated successfully!', 'success')
         return redirect(url_for('recipe_view', recipe_id=recipe_id))
     
@@ -537,6 +555,12 @@ def recipe_edit(recipe_id):
 @login_required
 def recipe_delete(recipe_id):
     """Delete a recipe."""
+    # Check if recipe exists first
+    recipe = storage.get_recipe(recipe_id, current_user.id)
+    if not recipe:
+        flash('Recipe not found or already deleted', 'error')
+        return redirect(url_for('recipe_list'))
+    
     success = storage.delete_recipe(recipe_id, current_user.id)
     
     if success:
@@ -810,24 +834,23 @@ def _validate_recipe_data(recipe_data):
     # Ingredient validation
     ingredients = recipe_data.get('ingredients', [])
     
-    # Check minimum 3 ingredients
-    if len(ingredients) < 3:
+    # Count non-empty ingredients
+    non_empty_ingredients = [ing for ing in ingredients if not ing.get('is_empty', False)]
+    
+    # Check minimum 3 non-empty ingredients
+    if len(non_empty_ingredients) < 3:
         errors.append("Recipes must have at least three ingredients")
     
-    # Validate each ingredient
+    # Validate each non-empty ingredient
     for i, ing in enumerate(ingredients, 1):
+        if ing.get('is_empty', False):
+            continue  # Skip empty ingredients
+        
         description = ing.get('description', '').strip()
         amount = ing.get('amount', '').strip()
         
-        # Each ingredient must have both description and amount
-        if not description and not amount:
-            continue  # Skip completely empty ingredients
-        
         if not description:
             errors.append(f"Ingredient {i}: Please enter a valid ingredient description")
-        
-        if not amount:
-            errors.append(f"Ingredient {i}: Please enter a valid ingredient amount")
         
         # Amount must be numerical (1, 1.5, 1/2, 1 1/2, etc.)
         if amount and not _is_valid_amount(amount):
@@ -877,6 +900,27 @@ def _is_valid_amount(amount: str) -> bool:
     return False
 
 
+def _trim_empty_ingredients_from_end(ingredients):
+    """Remove empty ingredients that are not followed by non-empty ingredients."""
+    if not ingredients:
+        return ingredients
+    
+    # Work backwards to find the last non-empty ingredient
+    last_non_empty_index = -1
+    for i in range(len(ingredients) - 1, -1, -1):
+        description = ingredients[i].get('description', '').strip()
+        if description:
+            last_non_empty_index = i
+            break
+    
+    # If no non-empty ingredients found, return empty list
+    if last_non_empty_index == -1:
+        return []
+    
+    # Return ingredients up to and including the last non-empty one
+    return ingredients[:last_non_empty_index + 1]
+
+
 def _parse_recipe_form(form_data):
     """Parse recipe data from form submission."""
     name = form_data.get('name', '').strip()
@@ -892,24 +936,27 @@ def _parse_recipe_form(form_data):
         'issue': form_data.get('source_issue', '').strip()
     }
     
-    # Parse ingredients
+    # Parse ingredients - preserve empty positions
     ingredients = []
     ingredient_count = 0
     
     while f'ingredient_description_{ingredient_count}' in form_data:
         description = form_data.get(f'ingredient_description_{ingredient_count}', '').strip()
+        amount = form_data.get(f'ingredient_amount_{ingredient_count}', '').strip()
+        unit = form_data.get(f'ingredient_unit_{ingredient_count}', '').strip()
         
-        if description:
-            amount = form_data.get(f'ingredient_amount_{ingredient_count}', '').strip()
-            unit = form_data.get(f'ingredient_unit_{ingredient_count}', '').strip()
-            
-            ingredients.append({
-                'amount': amount,
-                'unit': unit,
-                'description': description
-            })
+        # Always add ingredient position, even if empty
+        ingredients.append({
+            'amount': amount,
+            'unit': unit,
+            'description': description,
+            'is_empty': not description  # Mark empty ingredients
+        })
         
         ingredient_count += 1
+    
+    # Trim empty ingredients from the end of the list
+    ingredients = _trim_empty_ingredients_from_end(ingredients)
     
     # Parse tags
     tags = []

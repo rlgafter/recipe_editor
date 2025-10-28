@@ -40,7 +40,7 @@
                                            id="tag_{{ tag_name }}"
                                            {% if tag_name in selected_tags %}checked{% endif %}>
                                     <label class="form-check-label" for="tag_{{ tag_name }}">
-                                        {{ tag_name }} <span class="badge bg-secondary">{{ tag.recipe_count if tag.recipe_count is defined else 0 }}</span>
+                                        {{ tag_name }} ({{ tag.count }})
                                     </label>
                                 </div>
                             {% endfor %}
@@ -112,17 +112,35 @@
                                     </p>
                                 {% endif %}
                                 
-                                <p class="card-text">
-                                    <small class="text-muted">
-                                        <i class="bi bi-basket"></i> {{ recipe.ingredients|length }} ingredient{{ 's' if recipe.ingredients|length != 1 else '' }}
+                                <!-- Time and Serving Information -->
+                                {% if recipe.prep_time or recipe.cook_time or recipe.servings %}
+                                <div class="mb-2">
+                                    {% if recipe.prep_time %}
+                                    <small class="text-muted me-3">
+                                        <i class="bi bi-clock"></i> Prep: {{ recipe.prep_time }} min
                                     </small>
-                                </p>
+                                    {% endif %}
+                                    {% if recipe.cook_time %}
+                                    <small class="text-muted me-3">
+                                        <i class="bi bi-fire"></i> Cook: {{ recipe.cook_time }} min
+                                    </small>
+                                    {% endif %}
+                                    {% if recipe.servings %}
+                                    <small class="text-muted">
+                                        <i class="bi bi-people"></i> Serves: {{ recipe.servings }}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
                                 
                                 {% if recipe.tags %}
                                     <div class="mb-2">
-                                        {% for tag in recipe.tags %}
-                                            <span class="badge bg-primary">{{ tag }}</span>
-                                        {% endfor %}
+                                        <span class="text-muted">
+                                            <strong>Tags:</strong> 
+                                            {% for tag in recipe.tags %}
+                                                {{ tag.name }}{% if not loop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </span>
                                     </div>
                                 {% endif %}
                                 
