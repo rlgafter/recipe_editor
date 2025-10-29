@@ -39,11 +39,46 @@ class GeminiRecipeExtractor:
         else:
             try:
                 genai.configure(api_key=self.api_key)
-                self.client = genai.GenerativeModel('gemini-pro')
-                logger.info("Gemini client initialized successfully")
+                # Try multiple models in order of preference
+                self.model_name = self._get_available_model()
+                if self.model_name:
+                    self.client = genai.GenerativeModel(self.model_name)
+                    logger.info(f"Gemini client initialized successfully with model: {self.model_name}")
+                else:
+                    logger.error("No available Gemini models found")
+                    self.client = None
             except Exception as e:
                 logger.error(f"Error initializing Gemini client: {str(e)}")
                 self.client = None
+    
+    def _get_available_model(self) -> Optional[str]:
+        """Get the first available Gemini model from a list of preferred models."""
+        preferred_models = [
+            'models/gemini-2.5-flash',           # Fast and reliable
+            'models/gemini-2.5-pro',             # More capable
+            'models/gemini-2.0-flash',           # Alternative
+            'models/gemini-flash-latest',        # Latest flash
+            'models/gemini-pro-latest',          # Latest pro
+        ]
+        
+        try:
+            available_models = genai.list_models()
+            model_names = [model.name for model in available_models 
+                          if 'generateContent' in model.supported_generation_methods]
+            
+            # Find the first preferred model that's available
+            for preferred in preferred_models:
+                if preferred in model_names:
+                    logger.info(f"Selected Gemini model: {preferred}")
+                    return preferred
+            
+            # If no preferred model is available, log available models
+            logger.warning(f"No preferred Gemini models available. Available models: {model_names[:5]}...")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error checking available Gemini models: {str(e)}")
+            return None
     
     def is_configured(self) -> bool:
         """Check if Gemini API is configured."""
@@ -205,12 +240,19 @@ class GeminiRecipeExtractor:
                     
                     # Handle both single objects and arrays
                     if isinstance(data, list):
-                        recipes = [item for item in data if item.get('@type') == 'Recipe']
+                        recipes = [item for item in data if 'Recipe' in (item.get('@type') or [])]
                         if recipes:
                             data = recipes[0]
                     
-                    # Check if this is a Recipe object
-                    if data.get('@type') == 'Recipe':
+                    # Check if this is a Recipe object (handle both string and list @type)
+                    type_value = data.get('@type')
+                    is_recipe = False
+                    if isinstance(type_value, list):
+                        is_recipe = 'Recipe' in type_value
+                    else:
+                        is_recipe = type_value == 'Recipe'
+                    
+                    if is_recipe:
                         logger.info("Found Recipe schema in JSON-LD")
                         
                         # Format the structured data as readable text for Gemini
@@ -222,7 +264,14 @@ class GeminiRecipeExtractor:
                         
                         if data.get('author'):
                             author = data['author']
-                            if isinstance(author, dict):
+                            if isinstance(author, list) and len(author) > 0:
+                                # Handle list of authors (take first one)
+                                author_obj = author[0]
+                                if isinstance(author_obj, dict):
+                                    formatted.append(f"AUTHOR: {author_obj.get('name', '')}\n")
+                                else:
+                                    formatted.append(f"AUTHOR: {author_obj}\n")
+                            elif isinstance(author, dict):
                                 formatted.append(f"AUTHOR: {author.get('name', '')}\n")
                             else:
                                 formatted.append(f"AUTHOR: {author}\n")
@@ -341,10 +390,15 @@ The JSON should have this exact structure:
   "notes": "Any additional notes or tips",
   "tags": ["tag1", "tag2"],
   "source": {{
-    "name": "Source name (e.g., blog name, cookbook title, author name)",
+    "name": "Source name (e.g., blog name, cookbook title, publication name)",
     "url": "{source_url if source_url else ''}",
     "author": "Recipe author if mentioned",
-    "issue": "Issue or edition if from a magazine/publication"
+    "issue": "Publisher and publication year (e.g., 'Ten Speed Press, 2017') or magazine issue/edition",
+    "original_source": {{
+      "name": "Original source name (if this is an adapted recipe)",
+      "author": "Original authors (if this is an adapted recipe)",
+      "issue": "Original publisher/year (if this is an adapted recipe)"
+    }}
   }}
 }}
 
@@ -356,10 +410,13 @@ Important guidelines:
 5. Each instruction step should be clear and distinct
 6. Extract any notes, tips, or additional information into the "notes" field
 7. Infer appropriate tags (e.g., "DESSERT", "VEGETARIAN", "QUICK", "ITALIAN")
-8. For source.name: try to extract the website/blog name, cookbook title, or publication name
-9. If source name cannot be determined, leave it as empty string "" (it will be auto-filled with the URL)
-10. Make all tags uppercase
-11. Return ONLY the JSON object, no additional text or explanation
+8. For source.name: extract the cookbook title, blog name, or publication name
+9. For source.author: extract the recipe author(s) or cookbook author(s)
+10. For source.issue: extract publisher and publication year (e.g., "Ten Speed Press, 2017") or magazine issue/edition
+11. For source.original_source: ONLY populate if this is an adapted recipe (look for words like "adapted by", "from", "based on", "inspired by")
+12. If source name cannot be determined, leave it as empty string "" (it will be auto-filled with the URL)
+13. Make all tags uppercase
+14. Return ONLY the JSON object, no additional text or explanation
 
 Content to extract from:
 {content}
@@ -435,7 +492,151 @@ Return the recipe as JSON:"""
                 logger.error(f"Ingredient {i} must have a description")
                 return False
         
+        # Validate source information
+        self._validate_and_correct_source(recipe_data)
+        
         return True
+    
+    def _validate_and_correct_source(self, recipe_data: Dict[str, Any]) -> None:
+        """Validate and correct source information parsing."""
+        source = recipe_data.get('source', {})
+        if not source:
+            return
+        
+        # Check if publisher/edition info is incorrectly placed in author field
+        author = source.get('author', '').strip()
+        issue = source.get('issue', '').strip()
+        
+        # Common patterns where publisher info might be in author field
+        publisher_patterns = [
+            r'\(([^)]*Press[^)]*)\)',  # (Ten Speed Press, 2017)
+            r'\(([^)]*Publishing[^)]*)\)',  # (Random House Publishing, 2020)
+            r'\(([^)]*Books[^)]*)\)',  # (HarperCollins Books, 2019)
+            r'\(([^)]*\d{4})\)',  # (2017) - year only
+        ]
+        
+        import re
+        
+        # If issue is empty but author contains publisher info, move it
+        if not issue and author:
+            for pattern in publisher_patterns:
+                match = re.search(pattern, author)
+                if match:
+                    publisher_info = match.group(1)
+                    # Move publisher info to issue field
+                    source['issue'] = publisher_info
+                    # Remove publisher info from author field
+                    source['author'] = re.sub(pattern, '', author).strip()
+                    logger.info(f"Corrected source parsing: moved '{publisher_info}' from author to issue")
+                    break
+        
+        # Clean up author field (remove extra punctuation)
+        if source.get('author'):
+            author = source['author'].strip()
+            # Remove trailing commas, periods, and extra spaces
+            author = re.sub(r'[,\.\s]+$', '', author)
+            source['author'] = author
+    
+    def smart_source_detection(self, recipe_data: Dict[str, Any]) -> Optional[Dict[str, str]]:
+        """
+        Attempt to detect the source of an adapted recipe using web search.
+        Returns source info if found within 1 second, None otherwise.
+        """
+        import time
+        import requests
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+        
+        # Extract key information for search
+        recipe_name = recipe_data.get('name', '')
+        author = recipe_data.get('source', {}).get('author', '')
+        issue = recipe_data.get('source', {}).get('issue', '')
+        
+        if not author or not issue:
+            return None
+        
+        # Create search query
+        search_query = f'"{author}" "{recipe_name}" "{issue}"'
+        
+        def search_google():
+            """Search Google for the recipe source."""
+            try:
+                # Use a simple search approach (in production, you'd use Google Custom Search API)
+                search_url = f"https://www.google.com/search?q={search_query}"
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+                }
+                response = requests.get(search_url, headers=headers, timeout=1)
+                
+                if response.status_code == 200:
+                    # Simple pattern matching for common recipe sites
+                    content = response.text.lower()
+                    
+                    # Look for common recipe publication patterns
+                    if 'nytimes.com' in content or 'cooking.nytimes.com' in content:
+                        return {
+                            'name': 'NYT Cooking',
+                            'url': 'https://cooking.nytimes.com',
+                            'detected': True
+                        }
+                    elif 'food52.com' in content:
+                        return {
+                            'name': 'Food52',
+                            'url': 'https://food52.com',
+                            'detected': True
+                        }
+                    elif 'bonappetit.com' in content:
+                        return {
+                            'name': 'Bon Appétit',
+                            'url': 'https://bonappetit.com',
+                            'detected': True
+                        }
+                    elif 'epicurious.com' in content:
+                        return {
+                            'name': 'Epicurious',
+                            'url': 'https://epicurious.com',
+                            'detected': True
+                        }
+                
+                return None
+            except Exception as e:
+                logger.debug(f"Search error: {e}")
+                return None
+        
+        try:
+            # Run search with 1-second timeout
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(search_google)
+                result = future.result(timeout=1.0)
+                return result
+        except FutureTimeoutError:
+            logger.info("Smart source detection timed out after 1 second")
+            return None
+        except Exception as e:
+            logger.debug(f"Smart detection error: {e}")
+            return None
+    
+    def validate_url_accessibility(self, url: str) -> bool:
+        """
+        Validate that a URL is publicly accessible.
+        Returns True if accessible, False otherwise.
+        """
+        import requests
+        
+        if not url or not url.startswith(('http://', 'https://')):
+            return False
+        
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+            }
+            response = requests.head(url, headers=headers, timeout=10, allow_redirects=True)
+            
+            # Consider 200-299 status codes as accessible
+            return 200 <= response.status_code < 300
+            
+        except Exception as e:
+            logger.debug(f"URL validation error for {url}: {e}")
+            return False
 
 
 # Create global instance

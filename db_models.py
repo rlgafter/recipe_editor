@@ -298,6 +298,7 @@ class RecipeSource(db.Model):
     source_url = db.Column(Text)
     author = db.Column(db.String(200))
     issue = db.Column(db.String(100))
+    original_source = db.Column(JSON)  # Store original source as JSON: {name, author, issue}
     imported_from = db.Column(db.Enum('manual', 'url', 'pdf', 'text_file', 'api'), default='manual')
     imported_at = db.Column(db.DateTime)
     

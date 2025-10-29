@@ -1,6 +1,148 @@
 /**
- * Recipe Editor - Client-side JavaScript
+ * Source input popup for recipe uploads
  */
+function showSourceInputPopup(recipeData, callback) {
+    // Create popup HTML
+    const popupHtml = `
+        <div id="sourceInputModal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Recipe Source Information</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            This recipe appears to be adapted from another source. Please provide where you found it.
+                        </div>
+                        
+                        <form id="sourceInputForm">
+                            <div class="mb-3">
+                                <label for="sourceName" class="form-label">Source Name *</label>
+                                <input type="text" class="form-control" id="sourceName" 
+                                       placeholder="e.g., NYT Cooking, Food52, Bon Appétit" required>
+                                <div class="form-text">The website or publication where you found this recipe</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="sourceUrl" class="form-label">URL</label>
+                                <input type="url" class="form-control" id="sourceUrl" 
+                                       placeholder="https://cooking.nytimes.com/recipes/...">
+                                <div class="form-text">The direct link to the recipe (if publicly accessible)</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="privateSource">
+                                    <label class="form-check-label" for="privateSource">
+                                        This is a private source (not publicly accessible)
+                                    </label>
+                                </div>
+                                <div class="form-text">Check this if the recipe is from a private source or you don't have a public URL</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Original Source Information</label>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <p class="mb-1"><strong>Name:</strong> ${recipeData.source?.original_source?.name || 'Not specified'}</p>
+                                        <p class="mb-1"><strong>Author:</strong> ${recipeData.source?.original_source?.author || 'Not specified'}</p>
+                                        <p class="mb-0"><strong>Publisher:</strong> ${recipeData.source?.original_source?.issue || 'Not specified'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="saveSourceBtn">Save Recipe</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('sourceInputModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', popupHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('sourceInputModal'));
+    modal.show();
+    
+    // Handle form submission
+    document.getElementById('saveSourceBtn').addEventListener('click', function() {
+        const form = document.getElementById('sourceInputForm');
+        const formData = new FormData(form);
+        
+        const sourceData = {
+            name: document.getElementById('sourceName').value.trim(),
+            url: document.getElementById('sourceUrl').value.trim(),
+            isPrivate: document.getElementById('privateSource').checked
+        };
+        
+        // Validate required fields
+        if (!sourceData.name) {
+            alert('Please enter a source name');
+            return;
+        }
+        
+        // Validate URL if provided
+        if (sourceData.url && !isValidUrl(sourceData.url)) {
+            alert('Please enter a valid URL');
+            return;
+        }
+        
+        // Update recipe data with source information
+        if (!recipeData.source) {
+            recipeData.source = {};
+        }
+        
+        recipeData.source.name = sourceData.name;
+        recipeData.source.url = sourceData.url;
+        
+        // Hide modal
+        modal.hide();
+        
+        // Call callback with updated recipe data
+        callback(recipeData);
+    });
+    
+    // Handle modal close
+    document.getElementById('sourceInputModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+/**
+ * Validate URL format
+ */
+function isValidUrl(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+/**
+ * Check if recipe needs source input popup
+ */
+function needsSourceInput(recipeData) {
+    // Check if this is an adapted recipe with missing source info
+    const source = recipeData.source || {};
+    const originalSource = source.original_source || {};
+    
+    // If there's an original source but no current source name, show popup
+    return originalSource.name && !source.name;
+}
 
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', function() {

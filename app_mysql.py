@@ -449,6 +449,7 @@ def recipe_new():
     try:
         app.logger.info("=== RECIPE CREATION DEBUG START ===")
         app.logger.info(f"Form data keys: {list(request.form.keys())}")
+        app.logger.info(f"User: {current_user.username} (ID: {current_user.id})")
         
         recipe_data = _parse_recipe_form(request.form)
         app.logger.info(f"Parsed recipe data: name='{recipe_data.get('name')}', ingredients_count={len(recipe_data.get('ingredients', []))}")
@@ -480,6 +481,27 @@ def recipe_new():
             gemini_configured = gemini_service.is_configured()
             return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
                                  new_tags=[], gemini_configured=gemini_configured), 403
+        
+        # Additional source validation for public recipes
+        if visibility == 'public':
+            source = recipe_data.get('source', {})
+            source_url = source.get('url', '').strip()
+            
+            # If there's a URL, validate it's publicly accessible
+            if source_url:
+                if not gemini_service.validate_url_accessibility(source_url):
+                    flash('The source URL is not publicly accessible. Public recipes must have accessible source URLs.', 'error')
+                    all_tags = storage.get_all_tags()
+                    gemini_configured = gemini_service.is_configured()
+                    return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
+                                         new_tags=[], gemini_configured=gemini_configured), 400
+            else:
+                # No URL provided for public recipe
+                flash('Public recipes must have a publicly accessible source URL.', 'error')
+                all_tags = storage.get_all_tags()
+                gemini_configured = gemini_service.is_configured()
+                return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
+                                     new_tags=[], gemini_configured=gemini_configured), 400
         
         recipe = storage.save_recipe(recipe_data, current_user.id)
         
@@ -597,6 +619,14 @@ def import_recipe_from_url():
         success, recipe_data, error_msg = gemini_service.extract_from_url(url)
         
         if success and recipe_data:
+            # Apply source validation and correction
+            gemini_service._validate_and_correct_source(recipe_data)
+            
+            # For URL imports, the source URL is already set
+            source = recipe_data.get('source', {})
+            if not source.get('name'):
+                source['name'] = 'Web Source'  # Default name for URL imports
+            
             return jsonify({'success': True, 'recipe': recipe_data})
         else:
             return jsonify({'success': False, 'error': error_msg or 'Could not extract recipe'}), 400
@@ -639,6 +669,27 @@ def import_recipe_from_file():
                 return jsonify({'success': False, 'error': f'Unsupported file type'}), 400
         
         if success and recipe_data:
+            # Apply source validation and correction
+            gemini_service._validate_and_correct_source(recipe_data)
+            
+            # Check if this is an adapted recipe that needs source input
+            source = recipe_data.get('source', {})
+            original_source = source.get('original_source', {})
+            
+            # If there's an original source but no current source name, try smart detection
+            if original_source.get('name') and not source.get('name'):
+                app.logger.info("Attempting smart source detection for adapted recipe")
+                detected_source = gemini_service.smart_source_detection(recipe_data)
+                
+                if detected_source:
+                    source['name'] = detected_source['name']
+                    source['url'] = detected_source['url']
+                    app.logger.info(f"Smart detection found source: {detected_source['name']}")
+                else:
+                    # Mark as needing user input
+                    recipe_data['_needs_source_input'] = True
+                    app.logger.info("Smart detection failed, will prompt user for source")
+            
             return jsonify({'success': True, 'recipe': recipe_data})
         else:
             return jsonify({'success': False, 'error': error_msg or 'Could not extract recipe'}), 400
@@ -827,9 +878,18 @@ def _validate_recipe_data(recipe_data):
     has_name = source.get('name', '').strip()
     has_author = source.get('author', '').strip()
     has_url = source.get('url', '').strip()
+    has_issue = source.get('issue', '').strip()
     
     if not (has_name or has_author or has_url):
         errors.append("Please provide the recipe's provenance (source name, author, or URL)")
+    
+    # Validate source issue field format if provided
+    if has_issue:
+        # Check if issue contains publisher/year pattern
+        import re
+        if not re.search(r'(Press|Publishing|Books|Inc|Co\.|LLC).*\d{4}|\d{4}', has_issue):
+            # This is a warning, not an error - some sources might have different formats
+            logger.info(f"Source issue format might be incorrect: '{has_issue}'")
     
     # URL validation - must be a valid URL if provided
     if has_url:
@@ -932,6 +992,9 @@ def _parse_recipe_form(form_data):
     description = form_data.get('description', '').strip()
     instructions = form_data.get('instructions', '').strip()
     notes = form_data.get('notes', '').strip()
+    
+    # Clean up instructions - remove carriage returns and normalize line endings
+    instructions = instructions.replace('\r\n', '\n').replace('\r', '\n')
     
     # Parse source
     source = {

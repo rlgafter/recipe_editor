@@ -195,13 +195,15 @@ class MySQLStorage:
             recipe.source.source_url = source_data.get('url', '')
             recipe.source.author = source_data.get('author', '')
             recipe.source.issue = source_data.get('issue', '')
+            recipe.source.original_source = source_data.get('original_source')
         elif source_data.get('name'):
             source = RecipeSource(
                 recipe_id=recipe.id,
                 source_name=source_data.get('name', ''),
                 source_url=source_data.get('url', ''),
                 author=source_data.get('author', ''),
-                issue=source_data.get('issue', '')
+                issue=source_data.get('issue', ''),
+                original_source=source_data.get('original_source')
             )
             self.db.add(source)
         
