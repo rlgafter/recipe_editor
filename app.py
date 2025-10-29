@@ -5,6 +5,11 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 import re
 import json
 import hashlib

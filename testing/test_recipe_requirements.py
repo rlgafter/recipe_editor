@@ -34,7 +34,7 @@ class TestRecipeMinimumRequirements:
         response = auth_client['client'].post('/recipe/new', data=data)
         
         assert response.status_code in [400, 422]
-        assert b'Recipe name is required' in response.data
+        assert b'Please provide a valid recipe name' in response.data
     
     def test_recipe_must_have_source(self, auth_client):
         """Test that recipe must have source information."""
@@ -458,4 +458,4 @@ class TestRecipeRequirementsEdgeCases:
         assert response.status_code in [400, 422]
         # Should fail due to missing instructions and third ingredient
         response_text = response.data.decode('utf-8').lower()
-        assert b'instructions' in response_text or b'ingredient' in response_text
+        assert 'instructions' in response_text or 'ingredient' in response_text

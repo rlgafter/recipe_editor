@@ -149,9 +149,55 @@ def test_recipes(app):
         db.session.add(public_recipe)
         db.session.add(private_recipe)
         db.session.add(incomplete_recipe)
+        db.session.flush()  # Get IDs before creating ingredients
+        
+        # Add ingredients to make recipes valid
+        ingredients_data = [
+            ('flour', '1', 'cup'),
+            ('sugar', '2', 'tbsp'),
+            ('salt', '1', 'tsp')
+        ]
+        
+        # Create unique ingredients for each recipe to avoid conflicts
+        for i, recipe in enumerate([public_recipe, private_recipe, incomplete_recipe]):
+            for j, (desc, amount, unit) in enumerate(ingredients_data):
+                ingredient_name = f"{desc}_{i}_{j}"  # Make unique
+                ingredient = Ingredient(name=ingredient_name)
+                db.session.add(ingredient)
+                db.session.flush()
+                
+                recipe_ingredient = RecipeIngredient(
+                    recipe_id=recipe.id,
+                    ingredient_id=ingredient.id,
+                    amount=amount,
+                    unit=unit,
+                    notes=desc
+                )
+                db.session.add(recipe_ingredient)
+        
         db.session.commit()
         
-        recipes = [public_recipe, private_recipe, incomplete_recipe]
+        # Return recipe data as dictionaries to avoid session issues
+        recipes = [
+            {
+                'id': public_recipe.id,
+                'name': public_recipe.name,
+                'visibility': public_recipe.visibility,
+                'user_id': public_recipe.user_id
+            },
+            {
+                'id': private_recipe.id,
+                'name': private_recipe.name,
+                'visibility': private_recipe.visibility,
+                'user_id': private_recipe.user_id
+            },
+            {
+                'id': incomplete_recipe.id,
+                'name': incomplete_recipe.name,
+                'visibility': incomplete_recipe.visibility,
+                'user_id': incomplete_recipe.user_id
+            }
+        ]
     
     return recipes
 

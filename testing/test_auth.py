@@ -31,7 +31,7 @@ class TestAuthentication:
             'password': 'wrongpassword'
         })
         assert response.status_code == 200
-        assert b'Invalid username or password' in response.data
+        assert b'Invalid password' in response.data
     
     def test_login_with_nonexistent_user(self, client):
         """Test login with non-existent user."""
@@ -40,7 +40,7 @@ class TestAuthentication:
             'password': 'password123'
         })
         assert response.status_code == 200
-        assert b'Invalid username or password' in response.data
+        assert b'Invalid username or email' in response.data
     
     def test_logout_functionality(self, auth_client):
         """Test logout functionality."""
@@ -69,8 +69,8 @@ class TestAuthorization:
         """Test that unauthenticated users cannot access protected routes."""
         protected_routes = [
             '/recipe/new',
-            '/my-recipes',
-            '/profile'
+            '/auth/profile',
+            '/favorites'
         ]
         
         for route in protected_routes:
@@ -84,8 +84,8 @@ class TestAuthorization:
         
         protected_routes = [
             '/recipe/new',
-            '/my-recipes',
-            '/profile'
+            '/auth/profile',
+            '/favorites'
         ]
         
         for route in protected_routes:
@@ -142,8 +142,8 @@ class TestSessionManagement:
         auth_client['login']('testuser', 'password123')
         
         # Make multiple requests
-        response1 = auth_client['client'].get('/my-recipes')
-        response2 = auth_client['client'].get('/profile')
+        response1 = auth_client['client'].get('/favorites')
+        response2 = auth_client['client'].get('/auth/profile')
         
         # Both should be accessible
         assert response1.status_code in [200, 302]
@@ -155,7 +155,7 @@ class TestSessionManagement:
         auth_client['logout']()
         
         # Should not be able to access protected routes
-        response = auth_client['client'].get('/my-recipes')
+        response = auth_client['client'].get('/favorites')
         assert response.status_code in [302, 401, 403]
 
 
