@@ -115,7 +115,7 @@
                 <!-- Action Buttons -->
                 <div class="mb-4 no-print">
                     <div class="d-flex gap-2 flex-wrap justify-content-end">
-                        {% if current_user.can_edit_recipe(recipe) %}
+                        {% if current_user.is_authenticated and current_user.can_edit_recipe(recipe) %}
                         <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" class="btn btn-sm btn-primary" style="padding: 0.25rem 0.5rem;">
                             Edit
                         </a>
@@ -126,7 +126,7 @@
                         <a href="{{ url_for('recipe_email', recipe_id=recipe.id) }}" class="btn btn-sm btn-success" style="padding: 0.25rem 0.5rem;">
                             Email
                         </a>
-                        {% if current_user.can_delete_recipe(recipe) %}
+                        {% if current_user.is_authenticated and current_user.can_delete_recipe(recipe) %}
                         <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" style="padding: 0.25rem 0.5rem;">
                             Delete
                         </button>
@@ -184,7 +184,7 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-{% if current_user.can_delete_recipe(recipe) %}
+{% if current_user.is_authenticated and current_user.can_delete_recipe(recipe) %}
 <div class="modal fade no-print" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">

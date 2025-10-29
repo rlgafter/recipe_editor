@@ -8,6 +8,11 @@ from flask_login import login_user, logout_user, login_required, current_user
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 import config
 from db_models import db
 from mysql_storage import MySQLStorage, init_storage

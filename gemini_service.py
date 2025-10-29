@@ -38,7 +38,8 @@ class GeminiRecipeExtractor:
             self.client = None
         else:
             try:
-                self.client = genai.Client(api_key=self.api_key)
+                genai.configure(api_key=self.api_key)
+                self.client = genai.GenerativeModel('gemini-pro')
                 logger.info("Gemini client initialized successfully")
             except Exception as e:
                 logger.error(f"Error initializing Gemini client: {str(e)}")
@@ -292,10 +293,9 @@ class GeminiRecipeExtractor:
             prompt = self._create_extraction_prompt(content, source_url)
             
             # Call Gemini API
-            response = self.client.models.generate_content(
-                model='gemini-2.0-flash-exp',
-                contents=prompt,
-                config=types.GenerateContentConfig(
+            response = self.client.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(
                     temperature=0.1,  # Low temperature for more deterministic output
                     max_output_tokens=8192,
                 )
