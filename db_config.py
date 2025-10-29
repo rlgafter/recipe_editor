@@ -60,9 +60,10 @@ def get_database_uri():
 def test_connection():
     """Test database connection."""
     try:
+        from sqlalchemy import text
         engine = create_engine(SQLALCHEMY_DATABASE_URI, **SQLALCHEMY_ENGINE_OPTIONS)
         with engine.connect() as conn:
-            result = conn.execute(db.text("SELECT 1"))
+            result = conn.execute(text("SELECT 1"))
             return True, "Database connection successful"
     except Exception as e:
         return False, f"Database connection failed: {str(e)}"
