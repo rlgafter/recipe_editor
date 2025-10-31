@@ -965,6 +965,75 @@ def _is_valid_amount(amount: str) -> bool:
     return False
 
 
+def _format_recipe_text(text):
+    """
+    Format recipe text to add blank lines between numbered steps and paragraphs.
+    
+    For instructions:
+    - Adds blank line before each numbered step (Step 1, 1., etc.)
+    - Adds blank lines between paragraphs
+    
+    For notes:
+    - Adds blank lines between paragraphs
+    """
+    if not text:
+        return text
+    
+    import re
+    
+    # Normalize line endings first
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    
+    # Split into lines for processing
+    lines = text.split('\n')
+    
+    # Step 1: Add blank line before numbered steps
+    result = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        # Check if this line starts a numbered step
+        if re.match(r'^\s*(Step \d+|^\d+[.)]|\d+\))', line):
+            # Add blank line before this numbered step (unless it's the first line)
+            if i > 0 and result and result[-1].strip():
+                result.append('')
+            result.append(line)
+        else:
+            result.append(line)
+        
+        i += 1
+    
+    # Step 2: Add blank lines between paragraphs
+    # Join back, then identify paragraph boundaries
+    text = '\n'.join(result)
+    lines = text.split('\n')
+    
+    result = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        result.append(line)
+        
+        # If this line ends a paragraph (punctuation), add blank line if next is start of new paragraph
+        if line.strip() and i < len(lines) - 1:
+            next_line = lines[i + 1]
+            # Check if line ends with sentence-ending punctuation
+            if line.strip().endswith(('.', '!', '?', ':')):
+                # Check if next line starts a new sentence (capital letter)
+                if next_line.strip() and next_line.strip()[0].isupper():
+                    result.append('')
+        
+        i += 1
+    
+    # Join and clean up multiple blank lines
+    formatted = '\n'.join(result)
+    formatted = re.sub(r'\n{3,}', '\n\n', formatted)
+    
+    # Strip leading/trailing whitespace
+    return formatted.strip()
+    
+
 def _trim_empty_ingredients_from_end(ingredients):
     """Remove empty ingredients that are not followed by non-empty ingredients."""
     if not ingredients:
