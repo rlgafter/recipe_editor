@@ -43,8 +43,7 @@ logs/
 *.log
 
 # Environment Variables
-.env
-.env.local
+.env*
 
 # Data (optional - uncomment if you don't want to track recipe data)
 # data/

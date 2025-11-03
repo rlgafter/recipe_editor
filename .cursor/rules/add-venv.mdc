@@ -1,0 +1,5 @@
+Before running some python or pytest etc, `source venv/bin/activate`.
+
+---
+alwaysApply: true
+---
