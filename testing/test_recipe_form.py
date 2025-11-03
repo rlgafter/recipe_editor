@@ -107,7 +107,7 @@ class TestRecipeFormStructure:
             pytest.skip("No test recipes available")
         
         auth_client['login']('testuser', 'password123')
-        recipe = test_recipes[0]
+        recipe = test_recipes[1]  # Use private recipe (can be edited)
         
         response = auth_client['client'].get(f'/recipe/{recipe["id"]}/edit')
         assert response.status_code == 200
