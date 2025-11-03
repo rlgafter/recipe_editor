@@ -149,13 +149,48 @@
                                        class="btn btn-outline-primary">
                                         <i class="bi bi-eye"></i> View
                                     </a>
+                                    {% if current_user.is_authenticated and current_user.can_edit_recipe(recipe) %}
                                     <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" 
                                        class="btn btn-outline-secondary">
                                         <i class="bi bi-pencil"></i> Edit
                                     </a>
+                                    {% endif %}
+                                    {% if current_user.is_authenticated and current_user.can_delete_recipe(recipe) %}
+                                    <button type="button" class="btn btn-outline-danger" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteModal{{ recipe.id }}">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Delete Modal for this recipe -->
+                        {% if current_user.is_authenticated and current_user.can_delete_recipe(recipe) %}
+                        <div class="modal fade" id="deleteModal{{ recipe.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Confirm Delete</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to delete the recipe "{{ recipe.name }}"? This action cannot be undone.
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form method="POST" action="{{ url_for('recipe_delete', recipe_id=recipe.id) }}" style="display: inline;" class="delete-form" data-recipe-id="{{ recipe.id }}">
+                                            <button type="submit" class="btn btn-danger delete-button" data-recipe-id="{{ recipe.id }}">
+                                                <span class="button-text">Delete Recipe</span>
+                                                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
@@ -183,6 +218,34 @@
             if (checkedTags.length > 0) {
                 document.getElementById('filterForm').submit();
             }
+        });
+    });
+    
+    // Handle delete form submissions with loading state
+    document.querySelectorAll('.delete-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const recipeId = form.getAttribute('data-recipe-id');
+            const deleteButton = form.querySelector('.delete-button[data-recipe-id="' + recipeId + '"]');
+            const buttonText = deleteButton.querySelector('.button-text');
+            const spinner = deleteButton.querySelector('.spinner-border');
+            
+            // Prevent double submission
+            if (deleteButton.disabled) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Disable button and show loading state
+            deleteButton.disabled = true;
+            buttonText.textContent = 'Deleting...';
+            spinner.classList.remove('d-none');
+            
+            // Re-enable after 5 seconds as fallback
+            setTimeout(function() {
+                deleteButton.disabled = false;
+                buttonText.textContent = 'Delete Recipe';
+                spinner.classList.add('d-none');
+            }, 5000);
         });
     });
 </script>

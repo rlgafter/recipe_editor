@@ -542,7 +542,7 @@
             
             <!-- Form Actions -->
             <div class="mt-3">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="submitButton">
                     <i class="bi bi-check-circle"></i> 
                     {% if recipe and recipe.id %}Update Recipe{% else %}Create Recipe{% endif %}
                 </button>
@@ -585,6 +585,61 @@
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Visibility Change Confirmation Modal for Regular Users -->
+<div class="modal fade" id="visibilityPublicModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Make Recipe Public?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Are you sure you want to make this recipe public?</strong></p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Important:</strong> Once a recipe is public:
+                    <ul class="mb-0 mt-2">
+                        <li>You will <strong>NOT</strong> be able to edit it</li>
+                        <li>You will <strong>NOT</strong> be able to delete it</li>
+                        <li>Only an administrator can modify or remove it</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmPublicButton">
+                    <i class="bi bi-check-circle"></i> Yes, Make Public
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Visibility Change Confirmation Modal for Admins -->
+<div class="modal fade" id="visibilityAdminModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Visibility Change</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>You are changing this recipe's visibility from <strong id="oldVisibility"></strong> to <strong id="newVisibility"></strong>.</p>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    As an administrator, you can change this at any time.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmAdminVisibilityButton">
+                    <i class="bi bi-check-circle"></i> Confirm Change
+                </button>
             </div>
         </div>
     </div>
@@ -996,6 +1051,103 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 });
 {% endif %}
+
+// ============================================================================
+// Visibility Change Confirmation Logic
+// ============================================================================
+
+// Track original visibility value to detect changes
+const visibilitySelect = document.getElementById('visibility');
+const recipeForm = document.getElementById('recipeForm');
+const submitButton = document.getElementById('submitButton');
+
+let originalVisibility = visibilitySelect ? visibilitySelect.value : '';
+let confirmationPending = false;
+let bypassConfirmation = false;
+
+// Handle form submission with visibility confirmation
+if (recipeForm && visibilitySelect && submitButton) {
+    recipeForm.addEventListener('submit', function(e) {
+        const currentVisibility = visibilitySelect.value;
+        
+        // If we've already confirmed or no visibility change, submit normally
+        if (bypassConfirmation) {
+            bypassConfirmation = false;  // Reset for next time
+            return true;
+        }
+        
+        // Check if visibility is being changed
+        const visibilityChanged = originalVisibility !== currentVisibility;
+        
+        {% if current_user.is_admin %}
+        // Admin confirmation for ANY visibility change
+        if (visibilityChanged) {
+            e.preventDefault();
+            
+            // Populate modal with visibility values
+            const oldVisDisplay = document.getElementById('oldVisibility');
+            const newVisDisplay = document.getElementById('newVisibility');
+            
+            const visibilityLabels = {
+                'incomplete': 'Incomplete',
+                'private': 'Private',
+                'public': 'Public'
+            };
+            
+            oldVisDisplay.textContent = visibilityLabels[originalVisibility] || originalVisibility;
+            newVisDisplay.textContent = visibilityLabels[currentVisibility] || currentVisibility;
+            
+            // Show admin modal
+            const adminModal = new bootstrap.Modal(document.getElementById('visibilityAdminModal'));
+            adminModal.show();
+            return false;
+        }
+        {% else %}
+        // Regular user confirmation when changing TO public
+        if (currentVisibility === 'public' && originalVisibility !== 'public') {
+            e.preventDefault();
+            
+            // Show public warning modal
+            const publicModal = new bootstrap.Modal(document.getElementById('visibilityPublicModal'));
+            publicModal.show();
+            return false;
+        }
+        {% endif %}
+    });
+    
+    {% if current_user.is_admin %}
+    // Handle admin confirmation button
+    const confirmAdminButton = document.getElementById('confirmAdminVisibilityButton');
+    if (confirmAdminButton) {
+        confirmAdminButton.addEventListener('click', function() {
+            bypassConfirmation = true;
+            const adminModal = bootstrap.Modal.getInstance(document.getElementById('visibilityAdminModal'));
+            adminModal.hide();
+            
+            // Submit the form after modal closes
+            setTimeout(function() {
+                submitButton.click();
+            }, 300);
+        });
+    }
+    {% else %}
+    // Handle user confirmation button for public visibility
+    const confirmPublicButton = document.getElementById('confirmPublicButton');
+    if (confirmPublicButton) {
+        confirmPublicButton.addEventListener('click', function() {
+            bypassConfirmation = true;
+            const publicModal = bootstrap.Modal.getInstance(document.getElementById('visibilityPublicModal'));
+            publicModal.hide();
+            
+            // Submit the form after modal closes
+            setTimeout(function() {
+                submitButton.click();
+            }, 300);
+        });
+    }
+    {% endif %}
+}
+
 </script>
 {% endblock %}
 

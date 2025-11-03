@@ -66,16 +66,20 @@ class User(UserMixin, db.Model):
         # Admin can edit all recipes
         if self.is_admin:
             return True
-        # Users can edit their own recipes
-        return recipe.user_id == self.id
+        # Users can edit their own recipes only if not public
+        if recipe.user_id == self.id:
+            return recipe.visibility in ['incomplete', 'private']
+        return False
     
     def can_delete_recipe(self, recipe):
         """Check if user can delete a specific recipe."""
         # Admin can delete all recipes
         if self.is_admin:
             return True
-        # Users can delete their own recipes
-        return recipe.user_id == self.id
+        # Users can delete their own recipes only if not public
+        if recipe.user_id == self.id:
+            return recipe.visibility in ['incomplete', 'private']
+        return False
     
     def can_manage_users(self):
         """Check if user can manage other users."""
