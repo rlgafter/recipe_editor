@@ -548,7 +548,7 @@ def recipe_edit(recipe_id):
         flash('Recipe not found', 'error')
         return redirect(url_for('recipe_list'))
     
-    if recipe.user_id != current_user.id:
+    if not current_user.can_edit_recipe(recipe):
         flash('You do not have permission to edit this recipe', 'error')
         return redirect(url_for('recipe_view', recipe_id=recipe_id))
     
