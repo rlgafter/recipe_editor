@@ -130,7 +130,7 @@ export SMTP_USE_TLS=True
 
 1. **Start the server**:
    ```bash
-   python app.py
+   python app_mysql.py
    ```
 
 2. **Access the application**:
@@ -273,9 +273,10 @@ Tags help organize and categorize your recipes.
 
 ```
 recipe_editor/
-├── app.py                    # Main Flask application
-├── models.py                 # Data models (Recipe, Ingredient, Tag)
-├── storage.py                # JSON storage management
+├── app_mysql.py              # Main Flask application
+├── db_models.py              # Database models (User, Recipe, etc.)
+├── mysql_storage.py          # MySQL storage management
+├── auth.py                   # Authentication and user management
 ├── config.py                 # Configuration settings
 ├── email_service.py          # Email functionality
 ├── gemini_service.py         # AI-powered recipe extraction
@@ -351,15 +352,9 @@ $env:VARIABLE_NAME="value"
 
 ## Data Storage
 
-### JSON Storage (Default)
+All recipes and user data are stored in a MySQL database.
 
-Recipes are stored as JSON files in the `data/recipes/` directory. Each recipe has its own file (e.g., `recipe_001.json`). Tags and their associations are stored in `data/tags.json`.
-
-### MySQL Storage (Optional - Multi-User)
-
-For multi-user support with advanced features, you can migrate to MySQL. See [MYSQL_MIGRATION.md](MYSQL_MIGRATION.md) for complete setup instructions.
-
-**MySQL features:**
+**Features:**
 - User authentication and profiles
 - Normalized ingredient catalog
 - Search recipes by ingredient
@@ -371,19 +366,18 @@ For multi-user support with advanced features, you can migrate to MySQL. See [MY
 
 ### Backup
 
-To backup your recipes:
+To backup your MySQL database:
 ```bash
-# Copy the entire data directory
-cp -r data data_backup_$(date +%Y%m%d)
+# Export database
+mysqldump -u recipe_user -p recipe_editor > recipe_backup_$(date +%Y%m%d).sql
 ```
 
 ### Restore
 
 To restore from backup:
 ```bash
-# Replace data directory with backup
-rm -rf data
-cp -r data_backup_YYYYMMDD data
+# Import database
+mysql -u recipe_user -p recipe_editor < recipe_backup_YYYYMMDD.sql
 ```
 
 ## Troubleshooting
@@ -417,15 +411,10 @@ cp -r data_backup_YYYYMMDD data
 
 ### Recipes not displaying
 
-1. Check `data/recipes/` directory exists and contains JSON files
+1. Check that the MySQL database is running and accessible
 2. Check `logs/app.log` for errors
-3. Verify JSON files are not corrupted
-
-### Tags not working
-
-1. Check `data/tags.json` exists
-2. Verify the file contains valid JSON
-3. Check logs for errors
+3. Verify database connection settings in `.env` file
+4. Ensure the database has been initialized (see setup instructions)
 
 ### Recipe import not working
 
@@ -452,7 +441,7 @@ Debug mode provides detailed error messages and auto-reloads on code changes:
 
 ```bash
 export DEBUG=True
-python app.py
+python app_mysql.py
 ```
 
 ### Viewing Logs

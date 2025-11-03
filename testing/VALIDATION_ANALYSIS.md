@@ -147,7 +147,7 @@ def recipe_new():
         recipe_data = _parse_recipe_form(request.form)
         
         # Convert to Recipe object for validation
-        from models import Recipe, Ingredient
+        from db_models import Recipe
         
         recipe = Recipe(
             name=recipe_data['name'],

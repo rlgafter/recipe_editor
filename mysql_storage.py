@@ -219,7 +219,7 @@ class MySQLStorage:
     
     def delete_recipe(self, recipe_id: int, user_id: int) -> bool:
         """
-        Delete a recipe.
+        Delete a recipe and cleanup orphaned tags.
         
         Args:
             recipe_id: Recipe ID to delete
@@ -239,9 +239,24 @@ class MySQLStorage:
         if not user.can_delete_recipe(recipe):
             return False
         
+        # Delete the recipe (cascade will remove recipe_tags associations)
         self.db.delete(recipe)
         self.db.commit()
-        logger.info(f"Deleted recipe {recipe_id}")
+        
+        # Clean up orphaned tags (tags with no recipes)
+        orphaned_tags = self.db.query(Tag).filter(
+            ~Tag.recipes.any()
+        ).all()
+        
+        if orphaned_tags:
+            tag_names = [tag.name for tag in orphaned_tags]
+            for tag in orphaned_tags:
+                self.db.delete(tag)
+            self.db.commit()
+            logger.info(f"Deleted recipe {recipe_id} and cleaned up {len(orphaned_tags)} orphaned tags: {tag_names}")
+        else:
+            logger.info(f"Deleted recipe {recipe_id}")
+        
         return True
     
     # ========================================================================

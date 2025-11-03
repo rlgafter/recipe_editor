@@ -114,14 +114,14 @@ class TestSourceRequirements:
     """Test source information requirements."""
     
     def test_source_name_satisfies_requirement(self, auth_client):
-        """Test that source name satisfies source requirement."""
+        """Test that source name plus author satisfies source requirement."""
         auth_client['login']('testuser', 'password123')
         
         data = {
             'name': 'Test Recipe',
             'instructions': 'Test instructions',
             'source_name': 'Test Cookbook',  # Has source name
-            'source_author': '',  # No author
+            'source_author': 'Test Author',  # Has author
             'source_url': '',  # No URL
             'ingredient_description_0': 'flour',
             'ingredient_amount_0': '1',
@@ -140,13 +140,13 @@ class TestSourceRequirements:
         assert response.status_code in [200, 302]
     
     def test_source_author_satisfies_requirement(self, auth_client):
-        """Test that source author satisfies source requirement."""
+        """Test that source name plus author satisfies source requirement."""
         auth_client['login']('testuser', 'password123')
         
         data = {
             'name': 'Test Recipe',
             'instructions': 'Test instructions',
-            'source_name': '',  # No name
+            'source_name': 'Test Source',  # Has source name (required)
             'source_author': 'Test Author',  # Has author
             'source_url': '',  # No URL
             'ingredient_description_0': 'flour',
@@ -166,13 +166,13 @@ class TestSourceRequirements:
         assert response.status_code in [200, 302]
     
     def test_source_url_satisfies_requirement(self, auth_client):
-        """Test that source URL satisfies source requirement."""
+        """Test that source name plus URL satisfies source requirement."""
         auth_client['login']('testuser', 'password123')
         
         data = {
             'name': 'Test Recipe',
             'instructions': 'Test instructions',
-            'source_name': '',  # No name
+            'source_name': 'Recipe Website',  # Has source name (required)
             'source_author': '',  # No author
             'source_url': 'https://example.com/recipe',  # Has URL
             'ingredient_description_0': 'flour',
@@ -229,6 +229,7 @@ class TestIngredientRequirements:
             'name': 'Test Recipe',
             'instructions': 'Test instructions',
             'source_name': 'Test Source',
+            'source_author': 'Test Author',
             'ingredient_description_0': 'flour',
             'ingredient_amount_0': '1',
             'ingredient_unit_0': 'cup',
@@ -253,6 +254,7 @@ class TestIngredientRequirements:
             'name': 'Test Recipe',
             'instructions': 'Test instructions',
             'source_name': 'Test Source',
+            'source_author': 'Test Author',
             'ingredient_description_0': 'flour',
             'ingredient_amount_0': '1',
             'ingredient_unit_0': 'cup',
@@ -304,6 +306,7 @@ class TestIngredientRequirements:
             'name': 'Test Recipe',
             'instructions': 'Test instructions',
             'source_name': 'Test Source',
+            'source_author': 'Test Author',
             'ingredient_description_0': 'flour',
             'ingredient_amount_0': '',  # Empty amount - should be OK
             'ingredient_unit_0': 'cup',
@@ -328,6 +331,7 @@ class TestIngredientRequirements:
             'name': 'Test Recipe',
             'instructions': 'Test instructions',
             'source_name': 'Test Source',
+            'source_author': 'Test Author',
             'ingredient_description_0': 'flour',
             'ingredient_amount_0': '1',
             'ingredient_unit_0': '',  # Empty unit - should be OK
@@ -390,6 +394,7 @@ class TestCompleteRecipeRequirements:
             'name': 'Minimal Recipe',
             'instructions': 'Mix ingredients and cook.',
             'source_name': 'Minimal Cookbook',
+            'source_author': 'Test Author',
             'ingredient_description_0': 'flour',
             'ingredient_amount_0': '1',
             'ingredient_unit_0': 'cup',

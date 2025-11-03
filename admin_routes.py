@@ -434,8 +434,8 @@ def register_admin_routes(app):
     @login_required
     @require_admin
     def admin_delete_recipe(recipe_id):
-        """Admin delete recipe (bypasses ownership checks)."""
-        from db_models import Recipe
+        """Admin delete recipe (bypasses ownership checks) and cleanup orphaned tags."""
+        from db_models import Recipe, Tag
         
         recipe = Recipe.query.get(recipe_id)
         if not recipe:
@@ -443,10 +443,25 @@ def register_admin_routes(app):
             return redirect(url_for('admin_recipes'))
         
         recipe_name = recipe.name
+        
+        # Delete the recipe (cascade will remove recipe_tags associations)
         db.session.delete(recipe)
         db.session.commit()
         
-        logger.info(f"Admin {current_user.username} deleted recipe {recipe_id}: {recipe_name}")
+        # Clean up orphaned tags (tags with no recipes)
+        orphaned_tags = Tag.query.filter(
+            ~Tag.recipes.any()
+        ).all()
+        
+        if orphaned_tags:
+            tag_names = [tag.name for tag in orphaned_tags]
+            for tag in orphaned_tags:
+                db.session.delete(tag)
+            db.session.commit()
+            logger.info(f"Admin {current_user.username} deleted recipe {recipe_id}: {recipe_name} and cleaned up {len(orphaned_tags)} orphaned tags: {tag_names}")
+        else:
+            logger.info(f"Admin {current_user.username} deleted recipe {recipe_id}: {recipe_name}")
+        
         flash(f'Recipe "{recipe_name}" deleted successfully', 'success')
         
         return redirect(url_for('admin_recipes'))

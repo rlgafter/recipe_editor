@@ -10,7 +10,6 @@ Group=www-data
 WorkingDirectory=/home/yourusername/recipe_editor
 Environment=PATH=/home/yourusername/recipe_editor/venv/bin
 Environment=FLASK_ENV=production
-Environment=STORAGE_BACKEND=mysql
 ExecStart=/home/yourusername/recipe_editor/venv/bin/gunicorn --config gunicorn.conf.py app_mysql:app
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always

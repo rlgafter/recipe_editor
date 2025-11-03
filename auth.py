@@ -119,11 +119,11 @@ def create_user(username: str, email: str, password: str, display_name: str = No
         return False, None, f"Email '{email}' already registered"
     
     try:
-        # Get user type
-        from db_models import UserType
-        user_type_obj = db.session.query(UserType).filter(UserType.name == user_type).first()
-        if not user_type_obj:
-            user_type_obj = db.session.query(UserType).filter(UserType.name == 'unvalidated').first()
+        # Map user_type to boolean flags
+        # user_type can be: 'unvalidated', 'validated', 'share_recipes', 'admin'
+        is_admin = (user_type == 'admin')
+        can_publish_public = (user_type in ['share_recipes', 'admin'])
+        email_verified = (user_type in ['validated', 'share_recipes', 'admin'])
         
         # Create user
         user = User(
@@ -131,9 +131,10 @@ def create_user(username: str, email: str, password: str, display_name: str = No
             email=email,
             password_hash=hash_password(password),
             display_name=display_name or username,
-            user_type_id=user_type_obj.id,
-            email_verified=(user_type == 'validated'),  # Auto-verify validated users
-            is_admin=(user_type == 'admin')  # Set is_admin for backward compatibility
+            is_admin=is_admin,
+            can_publish_public=can_publish_public,
+            email_verified=email_verified,
+            is_active=True
         )
         db.session.add(user)
         db.session.flush()

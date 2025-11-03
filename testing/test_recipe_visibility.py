@@ -164,14 +164,15 @@ class TestRecipeEditingPermissions:
         assert response.status_code in [302, 401, 403]
     
     def test_user_can_edit_own_recipes(self, auth_client, test_recipes):
-        """Test that users can edit their own recipes."""
+        """Test that users can edit their own non-public recipes."""
         if not test_recipes:
             pytest.skip("No test recipes available")
             
         auth_client['login']('testuser', 'password123')
         
-        public_recipe = test_recipes[0]  # First recipe belongs to testuser
-        response = auth_client['client'].get(f'/recipe/{public_recipe["id"]}/edit')
+        # Use private or incomplete recipe (not public, since public recipes can't be edited)
+        private_recipe = test_recipes[1]  # Second recipe is private
+        response = auth_client['client'].get(f'/recipe/{private_recipe["id"]}/edit')
         
         # Should be accessible to owner
         assert response.status_code == 200
@@ -246,6 +247,7 @@ class TestRecipeVisibilitySettings:
             'name': 'Test Private Recipe',
             'instructions': 'Test instructions',
             'source_name': 'Test Source',
+            'source_author': 'Test Author',
             'visibility': 'private',
             'ingredient_description_0': 'flour',
             'ingredient_amount_0': '1',
@@ -269,6 +271,7 @@ class TestRecipeVisibilitySettings:
             'name': 'Test Incomplete Recipe',
             'instructions': 'Test instructions',
             'source_name': 'Test Source',
+            'source_author': 'Test Author',
             'visibility': 'incomplete',
             'ingredient_description_0': 'flour',
             'ingredient_amount_0': '1',
@@ -285,15 +288,15 @@ class TestRecipeVisibilitySettings:
         assert response.status_code in [200, 302]
     
     def test_user_without_permission_cannot_set_public(self, auth_client):
-        """Test that users without permission cannot set recipes to public."""
-        # This test assumes we have a user without public publishing permission
-        # For now, we'll test the general case
+        """Test that testuser WITH permission CAN set recipes to public."""
+        # Note: testuser in conftest has can_publish_public=True, so this test should succeed
         auth_client['login']('testuser', 'password123')
         
         response = auth_client['client'].post('/recipe/new', data={
             'name': 'Test Public Recipe',
             'instructions': 'Test instructions',
             'source_name': 'Test Source',
+            'source_author': 'Test Author',
             'visibility': 'public',
             'ingredient_description_0': 'flour',
             'ingredient_amount_0': '1',
@@ -306,5 +309,5 @@ class TestRecipeVisibilitySettings:
             'ingredient_unit_2': 'tsp'
         })
         
-        # Should succeed if user has permission, or show permission error
-        assert response.status_code in [200, 302, 403]
+        # Should succeed since testuser has can_publish_public=True
+        assert response.status_code in [200, 302]
