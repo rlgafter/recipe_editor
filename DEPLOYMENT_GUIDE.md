@@ -136,7 +136,6 @@ cat > .env << EOF
 SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
 DEBUG=False
 FLASK_ENV=production
-STORAGE_BACKEND=mysql
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=recipe_user
@@ -246,7 +245,6 @@ python scripts/create_user.py
 |----------|-------------|---------|
 | `SECRET_KEY` | Flask secret key | Auto-generated |
 | `DEBUG` | Debug mode | `False` |
-| `STORAGE_BACKEND` | Database backend | `mysql` |
 | `MYSQL_HOST` | MySQL host | `localhost` |
 | `MYSQL_USER` | MySQL username | `recipe_user` |
 | `MYSQL_PASSWORD` | MySQL password | `your_secure_password` |

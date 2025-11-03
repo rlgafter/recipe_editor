@@ -129,9 +129,6 @@ SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
 DEBUG=False
 FLASK_ENV=production
 
-# Storage Backend
-STORAGE_BACKEND=mysql
-
 # MySQL Configuration
 MYSQL_HOST=localhost
 MYSQL_PORT=3306

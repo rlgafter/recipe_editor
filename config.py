@@ -9,11 +9,8 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 HOST = os.environ.get('HOST', '0.0.0.0')
 PORT = int(os.environ.get('PORT', '5001'))
 
-# Storage Configuration
+# Base Directories
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, 'data')
-RECIPES_DIR = os.path.join(DATA_DIR, 'recipes')
-TAGS_FILE = os.path.join(DATA_DIR, 'tags.json')
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
 LOG_FILE = os.path.join(LOGS_DIR, 'app.log')
 
@@ -26,10 +23,7 @@ SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'True') == 'True'
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', SMTP_USERNAME)
 SENDER_NAME = os.environ.get('SENDER_NAME', 'Recipe Editor')
 
-# Storage Backend Configuration
-STORAGE_BACKEND = os.environ.get('STORAGE_BACKEND', 'json')  # 'json' or 'mysql'
-
-# MySQL Configuration (if using MySQL backend)
+# MySQL Configuration
 # Support both naming conventions
 MYSQL_HOST = os.environ.get('MYSQL_HOST') or os.environ.get('RECIPE_DB_HOSTNAME', 'localhost')
 MYSQL_PORT = int(os.environ.get('MYSQL_PORT') or os.environ.get('RECIPE_DB_PORT', '3306'))

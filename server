@@ -77,12 +77,7 @@ start_server() {
 
     # Start the server in background
     cd "$SCRIPT_DIR"
-    # Use app_mysql.py if STORAGE_BACKEND is set to mysql
-    if [ "$STORAGE_BACKEND" = "mysql" ]; then
-        nohup python app_mysql.py >> "$LOG_FILE" 2>&1 &
-    else
-        nohup python app.py >> "$LOG_FILE" 2>&1 &
-    fi
+    nohup python app_mysql.py >> "$LOG_FILE" 2>&1 &
     
     # Save PID
     echo $! > "$PID_FILE"

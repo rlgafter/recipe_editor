@@ -108,9 +108,6 @@ export MYSQL_USER=recipe_user
 export MYSQL_PASSWORD=${RECIPE_PASSWORD}
 export MYSQL_DATABASE=recipe_editor
 
-# Storage Backend
-export STORAGE_BACKEND=mysql
-
 # Optional: Enable SQL query logging
 export SQL_ECHO=False
 EOF
