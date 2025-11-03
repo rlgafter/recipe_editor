@@ -77,7 +77,7 @@ class TestRecipeFormStructure:
             pytest.skip("No test recipes available")
         
         auth_client['login']('testuser', 'password123')
-        recipe = test_recipes[0]  # Use first recipe
+        recipe = test_recipes[1]  # Use private recipe (can be edited)
         
         response = auth_client['client'].get(f'/recipe/{recipe["id"]}/edit')
         assert response.status_code == 200
@@ -317,12 +317,12 @@ class TestFormActions:
             assert button in response.data, f"Missing action button: {button.decode()}"
     
     def test_edit_form_has_delete_button(self, auth_client, test_recipes):
-        """Test that edit form has delete button for user's own recipes."""
+        """Test that edit form has delete button for user's own editable recipes."""
         if not test_recipes:
             pytest.skip("No test recipes available")
         
         auth_client['login']('testuser', 'password123')
-        recipe = test_recipes[0]  # User's own recipe
+        recipe = test_recipes[1]  # User's own private recipe (can be edited/deleted)
         
         response = auth_client['client'].get(f'/recipe/{recipe["id"]}/edit')
         assert response.status_code == 200
