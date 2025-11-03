@@ -148,16 +148,21 @@ class Recipe:
             if ing.amount and not self._is_valid_amount(ing.amount):
                 errors.append(f"Ingredient {i+1}: Invalid amount '{ing.amount}'. Use numbers or fractions (e.g., 1/2, 2.5)")
         
-        # Validate source information - at least one of name, author, or URL required
+        # Validate source information - name is REQUIRED, plus author OR URL
         if self.source:
             has_name = self.source.get('name', '').strip()
             has_author = self.source.get('author', '').strip()
             has_url = self.source.get('url', '').strip()
             
-            if not (has_name or has_author or has_url):
-                errors.append("Please provide the recipe's provenance (source name, author, or URL)")
+            # Source name is always required
+            if not has_name:
+                errors.append("Source name is required (e.g., cookbook title, website name, or publication)")
+            
+            # Must have either author OR URL (or both)
+            if not (has_author or has_url):
+                errors.append("Must provide either recipe author or source URL (or both)")
         else:
-            errors.append("Please provide the recipe's provenance (source name, author, or URL)")
+            errors.append("Source information is required (name, author, and/or URL)")
         
         # Validate URL if provided
         source_url = self.source.get('url', '').strip() if self.source else ''
@@ -168,10 +173,25 @@ class Recipe:
     
     @staticmethod
     def _is_valid_amount(amount: str) -> bool:
-        """Validate amount is a number or fraction."""
+        """
+        Validate amount is a number or fraction.
+        Supports Unicode fractions and various formats.
+        """
         amount = amount.strip()
         if not amount:
             return True
+        
+        # Convert Unicode fractions to ASCII equivalents
+        unicode_fractions = {
+            '½': '1/2', '⅓': '1/3', '⅔': '2/3', '¼': '1/4', '¾': '3/4',
+            '⅕': '1/5', '⅖': '2/5', '⅗': '3/5', '⅘': '4/5',
+            '⅙': '1/6', '⅚': '5/6', '⅐': '1/7', '⅛': '1/8', '⅜': '3/8',
+            '⅝': '5/8', '⅞': '7/8', '⅑': '1/9', '⅒': '1/10'
+        }
+        
+        # Replace Unicode fractions
+        for unicode_frac, ascii_frac in unicode_fractions.items():
+            amount = amount.replace(unicode_frac, ascii_frac)
         
         # Check for simple number (integer or decimal)
         if re.match(r'^\d+\.?\d*$', amount):

@@ -127,7 +127,8 @@ class TestSourceValidation:
         response = auth_client['client'].post('/recipe/new', data=invalid_recipe_data['no_source'])
         
         assert response.status_code in [400, 422]
-        assert b'provenance' in response.data.lower()
+        # Should show error about missing source name
+        assert b'source' in response.data.lower() and (b'required' in response.data.lower() or b'name' in response.data.lower())
     
     def test_empty_source_fields_shows_error(self, auth_client):
         """Test that all empty source fields show error."""
@@ -153,10 +154,11 @@ class TestSourceValidation:
         response = auth_client['client'].post('/recipe/new', data=data)
         
         assert response.status_code in [400, 422]
-        assert b'provenance' in response.data.lower()
+        # Should show error about missing source name
+        assert b'source' in response.data.lower() or b'name' in response.data.lower()
     
-    def test_valid_source_name_accepts(self, auth_client):
-        """Test that valid source name is accepted."""
+    def test_source_name_only_shows_error(self, auth_client):
+        """Test that source name alone (without author or URL) shows error."""
         auth_client['login']('testuser', 'password123')
         
         data = {
@@ -178,16 +180,18 @@ class TestSourceValidation:
         
         response = auth_client['client'].post('/recipe/new', data=data)
         
-        assert response.status_code in [200, 302]
+        # Should fail - needs author or URL
+        assert response.status_code in [400, 422]
+        assert b'author' in response.data.lower() or b'url' in response.data.lower()
     
-    def test_valid_source_author_accepts(self, auth_client):
-        """Test that valid source author is accepted."""
+    def test_source_name_and_author_accepts(self, auth_client):
+        """Test that source name + author is accepted."""
         auth_client['login']('testuser', 'password123')
         
         data = {
             'name': 'Test Recipe',
             'instructions': 'Test instructions',
-            'source_name': '',
+            'source_name': 'Test Cookbook',
             'source_author': 'Test Author',
             'source_url': '',
             'ingredient_description_0': 'flour',
@@ -205,14 +209,14 @@ class TestSourceValidation:
         
         assert response.status_code in [200, 302]
     
-    def test_valid_source_url_accepts(self, auth_client):
-        """Test that valid source URL is accepted."""
+    def test_source_name_and_url_accepts(self, auth_client):
+        """Test that source name + URL is accepted."""
         auth_client['login']('testuser', 'password123')
         
         data = {
             'name': 'Test Recipe',
             'instructions': 'Test instructions',
-            'source_name': '',
+            'source_name': 'Test Website',
             'source_author': '',
             'source_url': 'https://example.com/recipe',
             'ingredient_description_0': 'flour',
@@ -296,6 +300,7 @@ class TestIngredientValidation:
                 'name': f'Test Recipe with {amount}',
                 'instructions': 'Test instructions',
                 'source_name': 'Test Source',
+                'source_author': 'Test Author',
                 'ingredient_description_0': 'flour',
                 'ingredient_amount_0': amount,
                 'ingredient_unit_0': 'cup',

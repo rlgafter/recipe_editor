@@ -111,7 +111,7 @@
         </div>
         {% endif %}
         
-        <form method="POST" id="recipeForm" action="{% if recipe %}{{ url_for('recipe_edit', recipe_id=recipe.id) }}{% else %}{{ url_for('recipe_new') }}{% endif %}">
+        <form method="POST" id="recipeForm" action="{% if recipe and recipe.id %}{{ url_for('recipe_edit', recipe_id=recipe.id) }}{% else %}{{ url_for('recipe_new') }}{% endif %}">
             <div class="card shadow-sm">
                 <div class="card-body">
                     <!-- Recipe Name -->
@@ -135,17 +135,21 @@
                     
                     <!-- Source Information -->
                     <h5 class="mb-1">
-                        <i class="bi bi-book"></i> Source Information
+                        <i class="bi bi-book"></i> Source Information <span class="text-danger">*</span>
                         <i class="bi bi-question-circle text-muted ms-1" 
                            data-bs-toggle="tooltip" 
                            data-bs-placement="top" 
-                           title="Where did the recipe come from? You must at least provide the publication, author (can be you) or URL"></i>
+                           title="Source attribution is required. You must provide: (1) Source Name (always required), and (2) either Author OR URL (or both). Example: Source='Mom's Cookbook' + Author='Jane Smith', or Source='AllRecipes' + URL='https://...'"></i>
                     </h5>
                     <div class="mb-2">
                         <div class="row">
                             <div class="col-md-6 mb-1">
                                 <label for="source_name" class="form-label form-label-sm">
-                                    Source Name
+                                    Source Name <span class="text-danger">*</span>
+                                    <i class="bi bi-question-circle text-muted ms-1" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Required: Name of cookbook, website, publication, or person (e.g., 'Joy of Cooking', 'AllRecipes.com', 'Mom's Recipes')"></i>
                                 </label>
                                 <input type="text" 
                                        class="form-control" 
@@ -153,13 +157,17 @@
                                        name="source_name" 
                                        value="{% if recipe and recipe.source %}{{ recipe.source.source_name }}{% endif %}"
                                        maxlength="200"
-                                       placeholder="e.g., Ricki, Mom's Cookbook"
+                                       placeholder="e.g., Joy of Cooking, AllRecipes, Mom's Cookbook"
                                        autocomplete="off">
                             </div>
                             
                             <div class="col-md-6 mb-1">
                                 <label for="source_author" class="form-label form-label-sm">
-                                    Author
+                                    Author <span class="text-muted">(required if no URL)</span>
+                                    <i class="bi bi-question-circle text-muted ms-1" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Recipe author name. Required if no URL is provided. Can be you, a chef, or recipe creator."></i>
                                 </label>
                                 <input type="text" 
                                        class="form-control" 
@@ -167,7 +175,7 @@
                                        name="source_author" 
                                        value="{% if recipe and recipe.source %}{{ recipe.source.author }}{% endif %}"
                                        maxlength="200"
-                                       placeholder="e.g., Jane Smith (optional)"
+                                       placeholder="e.g., Julia Child, Jane Smith"
                                        autocomplete="off">
                             </div>
                         </div>
@@ -175,28 +183,28 @@
                         <div class="row">
                             <div class="col-md-6 mb-1">
                                 <label for="source_url" class="form-label form-label-sm">
-                                    URL
+                                    URL <span class="text-muted">(required if no author)</span>
                                     <i class="bi bi-question-circle text-muted ms-1" 
                                        data-bs-toggle="tooltip" 
                                        data-bs-placement="top" 
-                                       title="Must start with http:// or https://"></i>
+                                       title="Web link to the recipe. Required if no author is provided. Must start with http:// or https://. For public recipes, URL must be accessible."></i>
                                 </label>
                                 <input type="url" 
                                        class="form-control" 
                                        id="source_url" 
                                        name="source_url" 
                                        value="{% if recipe and recipe.source %}{{ recipe.source.source_url }}{% endif %}"
-                                       placeholder="https://example.com (optional)"
+                                       placeholder="https://example.com/recipe"
                                        autocomplete="url">
                             </div>
                             
                             <div class="col-md-6 mb-1">
                                 <label for="source_issue" class="form-label form-label-sm">
-                                    Issue/Edition
+                                    Issue/Edition <span class="text-muted">(optional)</span>
                                     <i class="bi bi-question-circle text-muted ms-1" 
                                        data-bs-toggle="tooltip" 
                                        data-bs-placement="top" 
-                                       title="For magazines or periodic publications"></i>
+                                       title="Optional: For book editions (e.g., '2019 Edition') or magazine issues (e.g., 'Fall 2024', 'Vol. 5 Issue 3')"></i>
                                 </label>
                                 <input type="text" 
                                        class="form-control" 
@@ -204,7 +212,7 @@
                                        name="source_issue" 
                                        value="{% if recipe and recipe.source %}{{ recipe.source.issue }}{% endif %}"
                                        maxlength="100"
-                                       placeholder="e.g., Fall 2024, Issue 42 (optional)"
+                                       placeholder="e.g., 2019 Edition, Fall 2024, Vol. 5 Issue 3"
                                        autocomplete="off">
                             </div>
                         </div>
@@ -536,13 +544,13 @@
             <div class="mt-3">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-check-circle"></i> 
-                    {% if recipe %}Update Recipe{% else %}Create Recipe{% endif %}
+                    {% if recipe and recipe.id %}Update Recipe{% else %}Create Recipe{% endif %}
                 </button>
-                <a href="{% if recipe %}{{ url_for('recipe_view', recipe_id=recipe.id) }}{% else %}{{ url_for('recipe_list') }}{% endif %}" 
+                <a href="{% if recipe and recipe.id %}{{ url_for('recipe_view', recipe_id=recipe.id) }}{% else %}{{ url_for('recipe_list') }}{% endif %}" 
                    class="btn btn-secondary">
                     <i class="bi bi-x-circle"></i> Cancel
                 </a>
-                {% if recipe and current_user.can_delete_recipe(recipe) %}
+                {% if recipe and recipe.id and current_user.can_delete_recipe(recipe) %}
                 <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal">
                     <i class="bi bi-trash"></i> Delete Recipe
                 </button>
@@ -553,7 +561,7 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-{% if recipe and current_user.can_delete_recipe(recipe) %}
+{% if recipe and recipe.id and current_user.can_delete_recipe(recipe) %}
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">

@@ -470,8 +470,10 @@ def recipe_new():
             all_tags = storage.get_all_tags()
             gemini_configured = gemini_service.is_configured()
             app.logger.info("=== RECIPE CREATION DEBUG END (VALIDATION FAILED) ===")
-            return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
-                                 new_tags=[], gemini_configured=gemini_configured), 400
+            # Preserve user's entered data in the form
+            recipe_form_data = _create_form_data_object(recipe_data)
+            return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
+                                 new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 400
         
         # Validate visibility permission
         visibility = recipe_data.get('visibility', 'incomplete')
@@ -479,29 +481,27 @@ def recipe_new():
             flash('You do not have permission to publish public recipes', 'error')
             all_tags = storage.get_all_tags()
             gemini_configured = gemini_service.is_configured()
-            return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
-                                 new_tags=[], gemini_configured=gemini_configured), 403
+            # Preserve user's entered data in the form
+            recipe_form_data = _create_form_data_object(recipe_data)
+            return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
+                                 new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 403
         
         # Additional source validation for public recipes
+        # Note: Source URL is optional, but if provided, it should be accessible
         if visibility == 'public':
             source = recipe_data.get('source', {})
             source_url = source.get('url', '').strip()
             
-            # If there's a URL, validate it's publicly accessible
+            # Only validate URL if one is provided (URL is optional)
             if source_url:
                 if not gemini_service.validate_url_accessibility(source_url):
-                    flash('The source URL is not publicly accessible. Public recipes must have accessible source URLs.', 'error')
+                    flash('The source URL is not publicly accessible. Please provide a valid URL or leave it blank.', 'error')
                     all_tags = storage.get_all_tags()
                     gemini_configured = gemini_service.is_configured()
-                    return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
-                                         new_tags=[], gemini_configured=gemini_configured), 400
-            else:
-                # No URL provided for public recipe
-                flash('Public recipes must have a publicly accessible source URL.', 'error')
-                all_tags = storage.get_all_tags()
-                gemini_configured = gemini_service.is_configured()
-                return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
-                                     new_tags=[], gemini_configured=gemini_configured), 400
+                    # Preserve user's entered data in the form
+                    recipe_form_data = _create_form_data_object(recipe_data)
+                    return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
+                                         new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 400
         
         recipe = storage.save_recipe(recipe_data, current_user.id)
         
@@ -516,11 +516,26 @@ def recipe_new():
         app.logger.error("=== RECIPE CREATION DEBUG END (EXCEPTION) ===")
         import traceback
         app.logger.error(f"Traceback: {traceback.format_exc()}")
-        flash('Error creating recipe. Please try again.', 'error')
-        all_tags = storage.get_all_tags()
+        
+        # Show specific error message to help user understand what went wrong
+        error_message = str(e)
+        if 'PendingRollbackError' in error_message or 'Unknown column' in error_message:
+            flash('Database error occurred. The database schema may need updating. Please contact support.', 'error')
+        elif 'IntegrityError' in str(type(e)):
+            flash('Data integrity error. Please check that all required fields are filled correctly.', 'error')
+        else:
+            # Show the actual error to help with debugging
+            flash(f'Error creating recipe: {str(e)[:200]}', 'error')
+        
+        # Preserve user's entered data in the form
+        try:
+            all_tags = storage.get_all_tags()
+        except:
+            all_tags = {}
         gemini_configured = gemini_service.is_configured()
-        return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
-                             new_tags=[], gemini_configured=gemini_configured), 500
+        recipe_form_data = _create_form_data_object(recipe_data)
+        return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
+                             new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 500
 
 
 @app.route('/recipe/<int:recipe_id>/edit', methods=['GET', 'POST'])
@@ -554,8 +569,10 @@ def recipe_edit(recipe_id):
                 flash(error, 'error')
             all_tags = storage.get_all_tags()
             gemini_configured = gemini_service.is_configured()
-            return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, 
-                                 new_tags=[], gemini_configured=gemini_configured), 400
+            # Preserve user's entered data in the form
+            recipe_form_data = _create_form_data_object(recipe_data, recipe_id)
+            return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
+                                 new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 400
         
         # Validate visibility permission
         visibility = recipe_data.get('visibility', 'incomplete')
@@ -563,8 +580,30 @@ def recipe_edit(recipe_id):
             flash('You do not have permission to publish public recipes', 'error')
             all_tags = storage.get_all_tags()
             gemini_configured = gemini_service.is_configured()
-            return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, 
-                                 new_tags=[], gemini_configured=gemini_configured), 403
+            # Preserve user's entered data in the form
+            recipe_form_data = _create_form_data_object(recipe_data, recipe_id)
+            return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
+                                 new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 403
+        
+        # Additional source validation for public recipes
+        # Note: For public recipes, source attribution is required but URL is optional.
+        # At least one of: source name, author, or URL must be provided (validated separately).
+        # If a URL is provided, it must be publicly accessible.
+        if visibility == 'public':
+            source = recipe_data.get('source', {})
+            source_url = source.get('url', '').strip()
+            
+            # Only validate URL if one is provided (URL is optional)
+            if source_url:
+                if not gemini_service.validate_url_accessibility(source_url):
+                    flash('The source URL is not publicly accessible. Please provide a valid URL or leave it blank.', 'error')
+                    all_tags = storage.get_all_tags()
+                    gemini_configured = gemini_service.is_configured()
+                    # Preserve user's entered data in the form
+                    recipe_form_data = _create_form_data_object(recipe_data)
+                    recipe_form_data.id = recipe_id  # Keep the recipe ID for the form action
+                    return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
+                                         new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 400
         
         storage.save_recipe(recipe_data, current_user.id, recipe_id=recipe_id)
         
@@ -574,8 +613,28 @@ def recipe_edit(recipe_id):
     
     except Exception as e:
         app.logger.error(f"Error updating recipe: {str(e)}")
-        flash('Error updating recipe. Please try again.', 'error')
-        return redirect(url_for('recipe_edit', recipe_id=recipe_id))
+        import traceback
+        app.logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        # Show specific error message to help user understand what went wrong
+        error_message = str(e)
+        if 'PendingRollbackError' in error_message or 'Unknown column' in error_message:
+            flash('Database error occurred. The database schema may need updating. Please contact support.', 'error')
+        elif 'IntegrityError' in str(type(e)):
+            flash('Data integrity error. Please check that all required fields are filled correctly.', 'error')
+        else:
+            # Show the actual error to help with debugging
+            flash(f'Error updating recipe: {str(e)[:200]}', 'error')
+        
+        # Preserve user's entered data in the form
+        try:
+            all_tags = storage.get_all_tags()
+        except:
+            all_tags = {}
+        gemini_configured = gemini_service.is_configured()
+        recipe_form_data = _create_form_data_object(recipe_data, recipe_id)
+        return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
+                             new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 500
 
 
 @app.route('/recipe/<int:recipe_id>/delete', methods=['POST'])
@@ -873,15 +932,20 @@ def _validate_recipe_data(recipe_data):
     if not instructions:
         errors.append("Please provide recipe instructions")
     
-    # Source validation - at least one field must have non-blank content
+    # Source validation - name is REQUIRED, plus author OR URL
     source = recipe_data.get('source', {})
     has_name = source.get('name', '').strip()
     has_author = source.get('author', '').strip()
     has_url = source.get('url', '').strip()
     has_issue = source.get('issue', '').strip()
     
-    if not (has_name or has_author or has_url):
-        errors.append("Please provide the recipe's provenance (source name, author, or URL)")
+    # Source name is always required
+    if not has_name:
+        errors.append("Source name is required (e.g., cookbook title, website name, or publication)")
+    
+    # Must have either author OR URL (or both)
+    if not (has_author or has_url):
+        errors.append("Must provide either recipe author or source URL (or both)")
     
     # Validate source issue field format if provided
     if has_issue:
@@ -927,13 +991,25 @@ def _validate_recipe_data(recipe_data):
 def _is_valid_amount(amount: str) -> bool:
     """
     Validate amount is a number or fraction.
-    Reuses validation logic from models.py
+    Supports Unicode fractions and various formats.
     """
     import re
     
     amount = amount.strip()
     if not amount:
         return True
+    
+    # Convert Unicode fractions to ASCII equivalents
+    unicode_fractions = {
+        '½': '1/2', '⅓': '1/3', '⅔': '2/3', '¼': '1/4', '¾': '3/4',
+        '⅕': '1/5', '⅖': '2/5', '⅗': '3/5', '⅘': '4/5',
+        '⅙': '1/6', '⅚': '5/6', '⅐': '1/7', '⅛': '1/8', '⅜': '3/8',
+        '⅝': '5/8', '⅞': '7/8', '⅑': '1/9', '⅒': '1/10'
+    }
+    
+    # Replace Unicode fractions
+    for unicode_frac, ascii_frac in unicode_fractions.items():
+        amount = amount.replace(unicode_frac, ascii_frac)
     
     # Check for simple number (integer or decimal)
     if re.match(r'^\d+\.?\d*$', amount):
@@ -964,6 +1040,75 @@ def _is_valid_amount(amount: str) -> bool:
     
     return False
 
+
+def _format_recipe_text(text):
+    """
+    Format recipe text to add blank lines between numbered steps and paragraphs.
+    
+    For instructions:
+    - Adds blank line before each numbered step (Step 1, 1., etc.)
+    - Adds blank lines between paragraphs
+    
+    For notes:
+    - Adds blank lines between paragraphs
+    """
+    if not text:
+        return text
+    
+    import re
+    
+    # Normalize line endings first
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    
+    # Split into lines for processing
+    lines = text.split('\n')
+    
+    # Step 1: Add blank line before numbered steps
+    result = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        # Check if this line starts a numbered step
+        if re.match(r'^\s*(Step \d+|^\d+[.)]|\d+\))', line):
+            # Add blank line before this numbered step (unless it's the first line)
+            if i > 0 and result and result[-1].strip():
+                result.append('')
+            result.append(line)
+        else:
+            result.append(line)
+        
+        i += 1
+    
+    # Step 2: Add blank lines between paragraphs
+    # Join back, then identify paragraph boundaries
+    text = '\n'.join(result)
+    lines = text.split('\n')
+    
+    result = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        result.append(line)
+        
+        # If this line ends a paragraph (punctuation), add blank line if next is start of new paragraph
+        if line.strip() and i < len(lines) - 1:
+            next_line = lines[i + 1]
+            # Check if line ends with sentence-ending punctuation
+            if line.strip().endswith(('.', '!', '?', ':')):
+                # Check if next line starts a new sentence (capital letter)
+                if next_line.strip() and next_line.strip()[0].isupper():
+                    result.append('')
+        
+        i += 1
+    
+    # Join and clean up multiple blank lines
+    formatted = '\n'.join(result)
+    formatted = re.sub(r'\n{3,}', '\n\n', formatted)
+    
+    # Strip leading/trailing whitespace
+    return formatted.strip()
+    
 
 def _trim_empty_ingredients_from_end(ingredients):
     """Remove empty ingredients that are not followed by non-empty ingredients."""
@@ -1049,6 +1194,38 @@ def _parse_recipe_form(form_data):
         'tags': tags,
         'visibility': form_data.get('visibility', 'incomplete')
     }
+
+
+def _create_form_data_object(recipe_data, recipe_id=None):
+    """
+    Create a mock recipe object from parsed form data for template rendering.
+    Used when validation fails to preserve user input.
+    
+    Args:
+        recipe_data: Parsed form data dictionary
+        recipe_id: Optional recipe ID (for edits), None for new recipes
+    """
+    from types import SimpleNamespace
+    
+    return SimpleNamespace(
+        id=recipe_id,  # None for new recipes, actual ID for edits
+        name=recipe_data.get('name', ''),
+        description=recipe_data.get('description', ''),
+        instructions=recipe_data.get('instructions', ''),
+        notes=recipe_data.get('notes', ''),
+        prep_time=recipe_data.get('prep_time'),
+        cook_time=recipe_data.get('cook_time'),
+        servings=recipe_data.get('servings'),
+        visibility=recipe_data.get('visibility', 'incomplete'),
+        ingredients=recipe_data.get('ingredients', []),
+        tags=[],
+        source=SimpleNamespace(
+            source_name=recipe_data.get('source', {}).get('name', ''),
+            author=recipe_data.get('source', {}).get('author', ''),
+            source_url=recipe_data.get('source', {}).get('url', ''),
+            issue=recipe_data.get('source', {}).get('issue', '')
+        ) if recipe_data.get('source') else None
+    )
 
 
 def _recipe_to_dict(recipe):
