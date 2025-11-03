@@ -184,7 +184,7 @@ class MySQLStorage:
                 amount=ing_data.get('amount', ''),
                 unit=ing_data.get('unit', ''),
                 notes=ing_data.get('notes', ''),
-                order_index=i
+                sort_order=i
             )
             self.db.add(recipe_ing)
         
@@ -195,15 +195,13 @@ class MySQLStorage:
             recipe.source.source_url = source_data.get('url', '')
             recipe.source.author = source_data.get('author', '')
             recipe.source.issue = source_data.get('issue', '')
-            recipe.source.original_source = source_data.get('original_source')
         elif source_data.get('name'):
             source = RecipeSource(
                 recipe_id=recipe.id,
                 source_name=source_data.get('name', ''),
                 source_url=source_data.get('url', ''),
                 author=source_data.get('author', ''),
-                issue=source_data.get('issue', ''),
-                original_source=source_data.get('original_source')
+                issue=source_data.get('issue', '')
             )
             self.db.add(source)
         

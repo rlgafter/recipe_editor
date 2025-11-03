@@ -166,11 +166,12 @@ class RecipeIngredient(db.Model):
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id', ondelete='CASCADE'), nullable=False)
     ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id', ondelete='RESTRICT'), nullable=False)
     amount = db.Column(db.String(50))
-    unit = db.Column(db.String(20))  # Changed to match DB schema
+    unit = db.Column(db.String(50))  # Matches DB schema
+    preparation = db.Column(db.String(200))  # Matches DB schema
+    is_optional = db.Column(db.Boolean, default=False)  # Matches DB schema
     notes = db.Column(Text)
-    order_index = db.Column(db.Integer, default=0)  # Changed from sort_order to match DB
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    sort_order = db.Column(db.Integer, default=0)  # Matches DB schema
+    ingredient_group = db.Column(db.String(100))  # Matches DB schema
     
     # Relationships
     recipe = db.relationship('Recipe', back_populates='recipe_ingredients')
@@ -238,7 +239,7 @@ class Recipe(db.Model):
     # Relationships
     recipe_ingredients = db.relationship('RecipeIngredient', back_populates='recipe', 
                                         cascade='all, delete-orphan', 
-                                        order_by='RecipeIngredient.order_index')
+                                        order_by='RecipeIngredient.sort_order')
     source = db.relationship('RecipeSource', back_populates='recipe', uselist=False, cascade='all, delete-orphan')
     photos = db.relationship('RecipePhoto', back_populates='recipe', cascade='all, delete-orphan')
     tags = db.relationship('Tag', secondary='recipe_tags', back_populates='recipes')
@@ -298,7 +299,6 @@ class RecipeSource(db.Model):
     source_url = db.Column(Text)
     author = db.Column(db.String(200))
     issue = db.Column(db.String(100))
-    original_source = db.Column(JSON)  # Store original source as JSON: {name, author, issue}
     imported_from = db.Column(db.Enum('manual', 'url', 'pdf', 'text_file', 'api'), default='manual')
     imported_at = db.Column(db.DateTime)
     
