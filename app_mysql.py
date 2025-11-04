@@ -981,17 +981,24 @@ def _validate_recipe_data(recipe_data):
         if not description:
             errors.append(f"Ingredient {i}: Please enter a valid ingredient description")
         
-        # Amount must be numerical (1, 1.5, 1/2, 1 1/2, etc.)
+        # Amount must be numerical (1, 1.5, 1/2, 1 1/2, etc.) or a range (1-2, 1/2-1, etc.)
         if amount and not _is_valid_amount(amount):
-            errors.append(f"Ingredient {i}: Please enter a valid numerical amount (e.g., 1, 1.5, 1/2, 1 1/2)")
+            errors.append(f"Ingredient {i}: Please enter a valid numerical amount (e.g., 1, 1.5, 1/2, 1 1/2) or range (e.g., 1-2, 1/2-1)")
     
     return len(errors) == 0, errors
 
 
 def _is_valid_amount(amount: str) -> bool:
     """
-    Validate amount is a number or fraction.
+    Validate amount is a number, fraction, or range.
     Supports Unicode fractions and various formats.
+    
+    Valid formats:
+    - Simple numbers: 1, 2.5, 10
+    - Fractions: 1/2, 3/4
+    - Mixed numbers: 1 1/2, 2 3/4
+    - Unicode fractions: ½, ¾
+    - Ranges: 1-2, 1/2-1, 1-1 1/2 (with or without spaces around hyphen)
     """
     import re
     
@@ -1011,10 +1018,55 @@ def _is_valid_amount(amount: str) -> bool:
     for unicode_frac, ascii_frac in unicode_fractions.items():
         amount = amount.replace(unicode_frac, ascii_frac)
     
+    # Normalize various dash types to regular hyphen for range detection
+    # En-dash (–), em-dash (—), minus sign (−) → regular hyphen (-)
+    amount = amount.replace('–', '-').replace('—', '-').replace('−', '-')
+    
+    # Check if this is a range (contains hyphen, but not at the start)
+    # Allow spaces around hyphen: "1-2" or "1 - 2"
+    if '-' in amount and not amount.startswith('-'):
+        # Split on hyphen and strip whitespace from both parts
+        parts = [part.strip() for part in amount.split('-', 1)]  # Split only on first hyphen
+        
+        if len(parts) == 2 and parts[0] and parts[1]:
+            # Both parts must be valid amounts
+            min_val = _parse_amount_value(parts[0])
+            max_val = _parse_amount_value(parts[1])
+            
+            if min_val is not None and max_val is not None:
+                # Validate both are in range and min < max
+                if 0 <= min_val <= 1000 and 0 <= max_val <= 1000 and min_val < max_val:
+                    return True
+        
+        return False
+    
+    # Not a range, validate as single amount
+    value = _parse_amount_value(amount)
+    if value is not None:
+        return 0 <= value <= 1000
+    
+    return False
+
+
+def _parse_amount_value(amount: str) -> float:
+    """
+    Parse an amount string to a numeric value.
+    Returns None if the amount cannot be parsed.
+    
+    Supports:
+    - Simple numbers: 1, 2.5
+    - Fractions: 1/2, 3/4
+    - Mixed numbers: 1 1/2, 2 3/4
+    """
+    import re
+    
+    amount = amount.strip()
+    if not amount:
+        return None
+    
     # Check for simple number (integer or decimal)
     if re.match(r'^\d+\.?\d*$', amount):
-        value = float(amount)
-        return 0 <= value <= 1000
+        return float(amount)
     
     # Check for fraction (e.g., 1/2, 3/4)
     if re.match(r'^\d+/\d+$', amount):
@@ -1022,9 +1074,8 @@ def _is_valid_amount(amount: str) -> bool:
         numerator = int(parts[0])
         denominator = int(parts[1])
         if denominator == 0:
-            return False
-        value = numerator / denominator
-        return 0 <= value <= 1000
+            return None
+        return numerator / denominator
     
     # Check for mixed number (e.g., 1 1/2)
     if re.match(r'^\d+\s+\d+/\d+$', amount):
@@ -1034,11 +1085,10 @@ def _is_valid_amount(amount: str) -> bool:
         numerator = int(frac_parts[0])
         denominator = int(frac_parts[1])
         if denominator == 0:
-            return False
-        value = whole + (numerator / denominator)
-        return 0 <= value <= 1000
+            return None
+        return whole + (numerator / denominator)
     
-    return False
+    return None
 
 
 def _format_recipe_text(text):
