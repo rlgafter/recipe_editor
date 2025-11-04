@@ -195,13 +195,20 @@ class MySQLStorage:
             recipe.source.source_url = source_data.get('url', '')
             recipe.source.author = source_data.get('author', '')
             recipe.source.issue = source_data.get('issue', '')
+            # Update URL confidence fields if present
+            if 'url_confidence' in source_data:
+                recipe.source.source_url_confidence = source_data.get('url_confidence')
+            if 'url_detection_method' in source_data:
+                recipe.source.source_url_detection_method = source_data.get('url_detection_method', 'manual')
         elif source_data.get('name'):
             source = RecipeSource(
                 recipe_id=recipe.id,
                 source_name=source_data.get('name', ''),
                 source_url=source_data.get('url', ''),
                 author=source_data.get('author', ''),
-                issue=source_data.get('issue', '')
+                issue=source_data.get('issue', ''),
+                source_url_confidence=source_data.get('url_confidence'),
+                source_url_detection_method=source_data.get('url_detection_method', 'manual')
             )
             self.db.add(source)
         

@@ -181,6 +181,29 @@ The AI automatically extracts:
 - Tags (e.g., DESSERT, VEGETARIAN)
 - Source attribution (URL, author, publication)
 
+#### Automatic URL Detection
+
+When importing recipes from **text files or PDFs**, the system can automatically find the recipe's online source URL:
+
+1. **AI-Powered Search**: After extracting recipe content, Gemini AI analyzes the recipe name, author, and source information to suggest likely URLs
+2. **Validation**: Suggested URLs are validated to ensure they're publicly accessible
+3. **Confidence Scoring**: Each detected URL receives a confidence score (0-100%)
+4. **Auto-Population**: If confidence is **80% or higher**, the URL is automatically filled in the source field
+5. **Fallback Search**: If Gemini can't find a URL, the system falls back to DuckDuckGo search
+
+**How it works:**
+- When you import a recipe from a text file (e.g., "Ottolenghi's Roasted Eggplant" by Yotam Ottolenghi)
+- The system searches for the recipe online
+- If found with high confidence, the URL is automatically added
+- You can always edit or remove the detected URL
+
+**Supported scenarios:**
+- Recipes from cookbooks with known online presence
+- Recipes adapted from popular recipe websites
+- Recipes with clear author attribution
+
+This feature saves you time by automatically linking recipes to their original sources, making it easier to reference and share.
+
 For detailed documentation, see [IMPORT_FEATURE.md](IMPORT_FEATURE.md).
 
 ### Creating Recipes

@@ -305,6 +305,8 @@ class RecipeSource(db.Model):
     issue = db.Column(db.String(100))
     imported_from = db.Column(db.Enum('manual', 'url', 'pdf', 'text_file', 'api'), default='manual')
     imported_at = db.Column(db.DateTime)
+    source_url_confidence = db.Column(db.Numeric(3, 2))  # Confidence score 0.00-1.00 for auto-detected URLs
+    source_url_detection_method = db.Column(db.Enum('manual', 'gemini_suggested', 'search_api', 'user_provided'), default='manual')
     
     # Relationship
     recipe = db.relationship('Recipe', back_populates='source')
