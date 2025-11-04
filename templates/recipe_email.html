@@ -16,7 +16,7 @@
                         {% if recipe.tags %}
                             | 
                             {% for tag in recipe.tags %}
-                                <span class="badge bg-primary">{{ tag }}</span>
+                                <span class="badge bg-primary">{{ tag.name }}</span>
                             {% endfor %}
                         {% endif %}
                     </small>

@@ -174,6 +174,30 @@ class GeminiRecipeExtractor:
                     if not recipe_data['source'].get('name'):
                         recipe_data['source']['name'] = filename
                 
+                # Attempt to find URL if not already present
+                source = recipe_data.get('source', {})
+                if not source.get('url'):
+                    logger.info("No URL in recipe, attempting automatic URL detection...")
+                    detected_url, confidence, method = self.find_recipe_url_with_gemini(recipe_data)
+                    
+                    if detected_url and confidence >= 0.8:
+                        logger.info(f"Auto-detected URL with {confidence:.0%} confidence: {detected_url}")
+                        if 'source' not in recipe_data:
+                            recipe_data['source'] = {}
+                        recipe_data['source']['url'] = detected_url
+                        recipe_data['source']['url_confidence'] = float(confidence)
+                        recipe_data['source']['url_detection_method'] = method
+                    elif detected_url and confidence >= 0.5:
+                        logger.info(f"Found URL with {confidence:.0%} confidence (below threshold): {detected_url}")
+                        # Store but don't auto-populate (user can see it as a suggestion later)
+                        if 'source' not in recipe_data:
+                            recipe_data['source'] = {}
+                        recipe_data['source']['suggested_url'] = detected_url
+                        recipe_data['source']['url_confidence'] = float(confidence)
+                        recipe_data['source']['url_detection_method'] = method
+                    else:
+                        logger.info("Could not find a confident URL match")
+                
                 logger.info("Successfully extracted recipe from text")
                 return True, recipe_data, None
             else:
@@ -216,6 +240,30 @@ class GeminiRecipeExtractor:
                         recipe_data['source'] = {}
                     if not recipe_data['source'].get('name'):
                         recipe_data['source']['name'] = filename
+                
+                # Attempt to find URL if not already present
+                source = recipe_data.get('source', {})
+                if not source.get('url'):
+                    logger.info("No URL in recipe, attempting automatic URL detection...")
+                    detected_url, confidence, method = self.find_recipe_url_with_gemini(recipe_data)
+                    
+                    if detected_url and confidence >= 0.8:
+                        logger.info(f"Auto-detected URL with {confidence:.0%} confidence: {detected_url}")
+                        if 'source' not in recipe_data:
+                            recipe_data['source'] = {}
+                        recipe_data['source']['url'] = detected_url
+                        recipe_data['source']['url_confidence'] = float(confidence)
+                        recipe_data['source']['url_detection_method'] = method
+                    elif detected_url and confidence >= 0.5:
+                        logger.info(f"Found URL with {confidence:.0%} confidence (below threshold): {detected_url}")
+                        # Store but don't auto-populate (user can see it as a suggestion later)
+                        if 'source' not in recipe_data:
+                            recipe_data['source'] = {}
+                        recipe_data['source']['suggested_url'] = detected_url
+                        recipe_data['source']['url_confidence'] = float(confidence)
+                        recipe_data['source']['url_detection_method'] = method
+                    else:
+                        logger.info("Could not find a confident URL match")
                 
                 logger.info("Successfully extracted recipe from PDF")
                 return True, recipe_data, None
@@ -615,6 +663,216 @@ Return the recipe as JSON:"""
             logger.debug(f"Smart detection error: {e}")
             return None
     
+    def find_recipe_url_with_gemini(self, recipe_data: Dict[str, Any], timeout: float = 3.0) -> Tuple[Optional[str], float, str]:
+        """
+        Use Gemini to find the most likely URL for a recipe.
+        Returns (url, confidence_score, detection_method)
+        
+        Args:
+            recipe_data: Dictionary with recipe metadata (name, author, source, etc.)
+            timeout: Maximum time to spend searching (default 3 seconds)
+        
+        Returns:
+            Tuple of (url, confidence, method) where:
+                - url: The detected URL (or None if not found)
+                - confidence: Score from 0.0 to 1.0
+                - method: 'gemini_suggested', 'search_api', or 'manual'
+        """
+        if not self.is_configured():
+            logger.info("Gemini not configured, skipping URL detection")
+            return None, 0.0, 'manual'
+        
+        import time
+        start_time = time.time()
+        
+        try:
+            # Extract search parameters
+            recipe_name = recipe_data.get('name', '')
+            source = recipe_data.get('source', {})
+            author = source.get('author', '')
+            source_name = source.get('name', '')
+            issue = source.get('issue', '')
+            
+            if not recipe_name:
+                logger.info("No recipe name provided, skipping URL detection")
+                return None, 0.0, 'manual'
+            
+            # Build search context for Gemini
+            search_context = f"Recipe: {recipe_name}"
+            if author:
+                search_context += f"\nAuthor: {author}"
+            if source_name:
+                search_context += f"\nSource: {source_name}"
+            if issue:
+                search_context += f"\nPublication: {issue}"
+            
+            # Ask Gemini to suggest URLs
+            logger.info(f"Asking Gemini to find URL for: {recipe_name}")
+            
+            prompt = f"""Given the following recipe information, suggest 2-3 most likely URLs where this recipe can be found online.
+Only suggest actual, specific recipe URLs - not just domain names.
+
+{search_context}
+
+Respond with a JSON array of objects containing:
+- "url": the full URL
+- "confidence": a number from 0.0 to 1.0 indicating how confident you are
+- "reason": brief explanation of why you think this is the correct URL
+
+Example response format:
+[
+  {{"url": "https://cooking.nytimes.com/recipes/12345-recipe-name", "confidence": 0.9, "reason": "Matches author and publication"}},
+  {{"url": "https://example.com/recipe", "confidence": 0.7, "reason": "Similar recipe from same source"}}
+]
+
+If you cannot find any likely URLs, return an empty array: []
+
+Return ONLY the JSON array, no other text."""
+            
+            response = self.client.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(
+                    temperature=0.1,
+                    max_output_tokens=1024,
+                )
+            )
+            
+            response_text = response.text.strip()
+            logger.debug(f"Gemini URL suggestion response: {response_text[:200]}...")
+            
+            # Parse JSON response
+            url_suggestions = self._parse_json_response(response_text)
+            
+            if not url_suggestions or not isinstance(url_suggestions, list) or len(url_suggestions) == 0:
+                logger.info("Gemini did not suggest any URLs")
+                # Try DuckDuckGo fallback if we have time
+                if time.time() - start_time < timeout - 0.5:
+                    return self._find_url_via_duckduckgo(recipe_name, author, source_name, timeout - (time.time() - start_time))
+                return None, 0.0, 'manual'
+            
+            # Validate suggested URLs in order of confidence
+            for suggestion in sorted(url_suggestions, key=lambda x: x.get('confidence', 0), reverse=True):
+                url = suggestion.get('url', '')
+                confidence = float(suggestion.get('confidence', 0))
+                reason = suggestion.get('reason', '')
+                
+                if not url:
+                    continue
+                
+                logger.info(f"Validating URL: {url} (confidence: {confidence}, reason: {reason})")
+                
+                # Validate the URL
+                if self.validate_url_accessibility(url):
+                    logger.info(f"✓ URL validated successfully: {url}")
+                    return url, confidence, 'gemini_suggested'
+                else:
+                    logger.info(f"✗ URL not accessible: {url}")
+            
+            # None of the suggested URLs worked, try DuckDuckGo fallback if we have time
+            if time.time() - start_time < timeout - 0.5:
+                logger.info("Gemini URLs failed validation, trying DuckDuckGo fallback")
+                return self._find_url_via_duckduckgo(recipe_name, author, source_name, timeout - (time.time() - start_time))
+            
+            logger.info("No valid URLs found via Gemini")
+            return None, 0.0, 'manual'
+            
+        except Exception as e:
+            logger.error(f"Error finding URL with Gemini: {str(e)}")
+            # Try DuckDuckGo fallback if we have time
+            if time.time() - start_time < timeout - 1.0:
+                logger.info("Gemini error, trying DuckDuckGo fallback")
+                return self._find_url_via_duckduckgo(recipe_name, author, source_name, timeout - (time.time() - start_time))
+            return None, 0.0, 'manual'
+    
+    def _find_url_via_duckduckgo(self, recipe_name: str, author: str = '', source_name: str = '', timeout: float = 1.5) -> Tuple[Optional[str], float, str]:
+        """
+        Fallback method to find recipe URL using DuckDuckGo search.
+        Returns (url, confidence_score, detection_method)
+        """
+        try:
+            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+            import re
+            from urllib.parse import quote_plus
+            
+            def search_duckduckgo():
+                try:
+                    # Build search query
+                    query_parts = [recipe_name, 'recipe']
+                    if author:
+                        query_parts.insert(1, author)
+                    if source_name and source_name not in ['Web Source', 'Unknown']:
+                        query_parts.insert(1, source_name)
+                    
+                    query = ' '.join(query_parts)
+                    search_url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
+                    
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+                    }
+                    response = requests.get(search_url, headers=headers, timeout=timeout - 0.2)
+                    
+                    if response.status_code != 200:
+                        return None
+                    
+                    # Parse HTML to extract URLs
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    
+                    # Known recipe domains (in order of preference)
+                    preferred_domains = [
+                        'cooking.nytimes.com', 'food52.com', 'bonappetit.com', 'epicurious.com',
+                        'seriouseats.com', 'allrecipes.com', 'foodnetwork.com', 'bbcgoodfood.com',
+                        'smittenkitchen.com', 'kingarthurbaking.com', 'simplyreci pes.com',
+                        'delish.com', 'tasteofhome.com', 'myrecipes.com', 'cookieandkate.com'
+                    ]
+                    
+                    # Find all result links
+                    results = []
+                    for link in soup.find_all('a', class_='result__a'):
+                        url = link.get('href')
+                        if url and url.startswith('http'):
+                            # Calculate confidence based on domain match
+                            confidence = 0.5  # Base confidence for DuckDuckGo results
+                            
+                            for idx, domain in enumerate(preferred_domains):
+                                if domain in url:
+                                    # Higher confidence for preferred domains
+                                    confidence = 0.8 - (idx * 0.02)  # 0.8 for top sites, decreasing slightly
+                                    break
+                            
+                            results.append((url, confidence))
+                    
+                    # Return best result
+                    if results:
+                        return max(results, key=lambda x: x[1])
+                    return None
+                    
+                except Exception as e:
+                    logger.debug(f"DuckDuckGo search error: {e}")
+                    return None
+            
+            # Run search with timeout
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(search_duckduckgo)
+                result = future.result(timeout=timeout)
+                
+                if result:
+                    url, confidence = result
+                    # Validate the URL
+                    if self.validate_url_accessibility(url):
+                        logger.info(f"✓ Found URL via DuckDuckGo: {url} (confidence: {confidence})")
+                        return url, confidence, 'search_api'
+                    else:
+                        logger.info(f"✗ DuckDuckGo URL not accessible: {url}")
+                
+                return None, 0.0, 'manual'
+                
+        except FutureTimeoutError:
+            logger.info("DuckDuckGo search timed out")
+            return None, 0.0, 'manual'
+        except Exception as e:
+            logger.debug(f"DuckDuckGo search error: {e}")
+            return None, 0.0, 'manual'
+    
     def validate_url_accessibility(self, url: str) -> bool:
         """
         Validate that a URL is publicly accessible.
@@ -637,6 +895,7 @@ Return the recipe as JSON:"""
         except Exception as e:
             logger.debug(f"URL validation error for {url}: {e}")
             return False
+    
 
 
 # Create global instance

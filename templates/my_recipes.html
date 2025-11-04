@@ -55,7 +55,7 @@
                                 {% if recipe.tags %}
                                     <div class="mb-2">
                                         {% for tag in recipe.tags %}
-                                            <span class="badge bg-primary">{{ tag }}</span>
+                                            <span class="badge bg-primary">{{ tag.name }}</span>
                                         {% endfor %}
                                     </div>
                                 {% endif %}
