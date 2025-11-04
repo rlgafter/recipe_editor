@@ -296,7 +296,7 @@
                             <i class="bi bi-question-circle text-muted ms-1" 
                                data-bs-toggle="tooltip" 
                                data-bs-placement="top" 
-                               title="Add at least 3 ingredients. Amounts are optional - just describe the ingredient if no specific quantity is needed. Amount examples: 1, 1/2, 2.5, 1 1/2 (range: 0-1000)"></i>
+                               title="Add at least 3 ingredients. Amounts are optional - just describe the ingredient if no specific quantity is needed. Amount examples: 1, 1/2, 2.5, 1 1/2, or ranges like 1-2, 1/2-1 (range: 0-1000)"></i>
                         </label>
                         <div id="ingredientsList">
                             {% if recipe and recipe.ingredients %}
@@ -912,7 +912,7 @@ function populateForm(recipeData) {
     // Populate source information
     if (recipeData.source) {
         if (recipeData.source.name) {
-            document.getElementById('source_name').value = recipeData.source.name;
+document.getElementById('source_name').value = recipeData.source.name;
         }
         if (recipeData.source.url) {
             document.getElementById('source_url').value = recipeData.source.url;
@@ -923,6 +923,17 @@ function populateForm(recipeData) {
         if (recipeData.source.issue) {
             document.getElementById('source_issue').value = recipeData.source.issue;
         }
+    }
+    
+    // Populate time and serving information
+    if (recipeData.prep_time) {
+        document.getElementById('prep_time').value = recipeData.prep_time;
+    }
+    if (recipeData.cook_time) {
+        document.getElementById('cook_time').value = recipeData.cook_time;
+    }
+    if (recipeData.servings) {
+        document.getElementById('servings').value = recipeData.servings;
     }
     
     // Populate ingredients
@@ -1061,7 +1072,17 @@ const visibilitySelect = document.getElementById('visibility');
 const recipeForm = document.getElementById('recipeForm');
 const submitButton = document.getElementById('submitButton');
 
-let originalVisibility = visibilitySelect ? visibilitySelect.value : '';
+// For new recipes, use the actual default value from the form (first option)
+// For existing recipes, use the recipe's current visibility
+let originalVisibility = visibilitySelect ? visibilitySelect.value : 'incomplete';
+{% if not recipe %}
+// For new recipes, ensure we use the form's default (first option: 'incomplete')
+// This prevents false "change" detection on initial submit
+if (!originalVisibility || originalVisibility === '') {
+    originalVisibility = 'incomplete';
+}
+{% endif %}
+console.log('Initialized originalVisibility:', originalVisibility);
 let confirmationPending = false;
 let bypassConfirmation = false;
 
@@ -1070,18 +1091,26 @@ if (recipeForm && visibilitySelect && submitButton) {
     recipeForm.addEventListener('submit', function(e) {
         const currentVisibility = visibilitySelect.value;
         
+        console.log('Form submit event triggered');
+        console.log('Original visibility:', originalVisibility);
+        console.log('Current visibility:', currentVisibility);
+        console.log('Bypass confirmation:', bypassConfirmation);
+        
         // If we've already confirmed or no visibility change, submit normally
         if (bypassConfirmation) {
             bypassConfirmation = false;  // Reset for next time
+            console.log('Bypassing confirmation, allowing submit');
             return true;
         }
         
         // Check if visibility is being changed
         const visibilityChanged = originalVisibility !== currentVisibility;
+        console.log('Visibility changed:', visibilityChanged);
         
         {% if current_user.is_admin %}
         // Admin confirmation for ANY visibility change
         if (visibilityChanged) {
+            console.log('PREVENTING SUBMIT: Admin visibility confirmation needed');
             e.preventDefault();
             
             // Populate modal with visibility values
@@ -1100,19 +1129,24 @@ if (recipeForm && visibilitySelect && submitButton) {
             // Show admin modal
             const adminModal = new bootstrap.Modal(document.getElementById('visibilityAdminModal'));
             adminModal.show();
+            console.log('Showing admin visibility confirmation modal');
             return false;
         }
         {% else %}
         // Regular user confirmation when changing TO public
         if (currentVisibility === 'public' && originalVisibility !== 'public') {
+            console.log('PREVENTING SUBMIT: Public visibility confirmation needed');
             e.preventDefault();
             
             // Show public warning modal
             const publicModal = new bootstrap.Modal(document.getElementById('visibilityPublicModal'));
             publicModal.show();
+            console.log('Showing public visibility confirmation modal');
             return false;
         }
         {% endif %}
+        
+        console.log('Allowing form to submit normally');
     });
     
     {% if current_user.is_admin %}

@@ -350,10 +350,28 @@ class GeminiRecipeExtractor:
                         
                         # Extract additional info
                         if data.get('recipeYield'):
-                            formatted.append(f"\nYIELD: {data.get('recipeYield')}")
+                            yield_value = data.get('recipeYield')
+                            # Handle both string and list formats
+                            if isinstance(yield_value, list):
+                                yield_value = yield_value[0] if yield_value else ''
+                            formatted.append(f"\nYIELD/SERVINGS: {yield_value}")
                         
-                        if data.get('totalTime'):
-                            formatted.append(f"TOTAL TIME: {data.get('totalTime')}")
+                        # Extract time information
+                        if data.get('prepTime'):
+                            prep_minutes = self._parse_iso8601_duration(data.get('prepTime'))
+                            if prep_minutes:
+                                formatted.append(f"PREP TIME: {prep_minutes} minutes")
+                        
+                        if data.get('cookTime'):
+                            cook_minutes = self._parse_iso8601_duration(data.get('cookTime'))
+                            if cook_minutes:
+                                formatted.append(f"COOK TIME: {cook_minutes} minutes")
+                        
+                        if data.get('totalTime') and not (data.get('prepTime') or data.get('cookTime')):
+                            # Only include total time if prep/cook aren't specified separately
+                            total_minutes = self._parse_iso8601_duration(data.get('totalTime'))
+                            if total_minutes:
+                                formatted.append(f"TOTAL TIME: {total_minutes} minutes")
                         
                         if data.get('recipeCategory'):
                             formatted.append(f"CATEGORY: {data.get('recipeCategory')}")
@@ -374,6 +392,38 @@ class GeminiRecipeExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting structured data: {str(e)}")
+            return None
+    
+    def _parse_iso8601_duration(self, duration_str: str) -> Optional[int]:
+        """
+        Parse ISO 8601 duration format to minutes.
+        Examples: PT15M -> 15, PT1H30M -> 90, PT2H -> 120
+        Returns None if parsing fails.
+        """
+        if not duration_str or not isinstance(duration_str, str):
+            return None
+        
+        import re
+        
+        try:
+            # ISO 8601 duration format: PT[hours]H[minutes]M[seconds]S
+            pattern = r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?'
+            match = re.match(pattern, duration_str.upper())
+            
+            if not match:
+                return None
+            
+            hours = int(match.group(1)) if match.group(1) else 0
+            minutes = int(match.group(2)) if match.group(2) else 0
+            seconds = int(match.group(3)) if match.group(3) else 0
+            
+            # Convert to total minutes (round up seconds)
+            total_minutes = hours * 60 + minutes + (1 if seconds > 0 else 0)
+            
+            return total_minutes if total_minutes > 0 else None
+            
+        except Exception as e:
+            logger.debug(f"Error parsing duration '{duration_str}': {e}")
             return None
     
     def _extract_recipe_with_gemini(self, content: str, source_url: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -427,6 +477,9 @@ class GeminiRecipeExtractor:
 The JSON should have this exact structure:
 {{
   "name": "Recipe name",
+  "prep_time": 15,
+  "cook_time": 30,
+  "servings": "4",
   "ingredients": [
     {{
       "amount": "amount (e.g., 2, 1/2, 1.5)",
@@ -464,7 +517,10 @@ Important guidelines:
 11. For source.original_source: ONLY populate if this is an adapted recipe (look for words like "adapted by", "from", "based on", "inspired by")
 12. If source name cannot be determined, leave it as empty string "" (it will be auto-filled with the URL)
 13. Make all tags uppercase
-14. Return ONLY the JSON object, no additional text or explanation
+14. For prep_time and cook_time: extract as INTEGER minutes (e.g., 15, 30, 90). If not specified, use null.
+15. For servings: extract as STRING (e.g., "4", "6-8", "makes 12 cookies", "serves 4-6"). If not specified, use empty string "".
+16. If only "total time" is given (not separated into prep and cook), put the total in cook_time and leave prep_time as null
+17. Return ONLY the JSON object, no additional text or explanation
 
 Content to extract from:
 {content}
