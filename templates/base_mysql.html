@@ -75,6 +75,38 @@
                                 <i class="bi bi-plus-circle"></i> New Recipe
                             </a>
                         </li>
+                        
+                        {% if current_user.is_admin %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if request.endpoint and request.endpoint.startswith('admin_') %}active{% endif %}" 
+                               href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-shield-check"></i> Admin
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_users') }}">
+                                        <i class="bi bi-people"></i> Manage Users
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_recipes') }}">
+                                        <i class="bi bi-journal-text"></i> Manage Recipes
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_tags') }}">
+                                        <i class="bi bi-tags"></i> Manage Tags
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
+                                        <i class="bi bi-speedometer2"></i> Dashboard
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        {% endif %}
                     {% endif %}
                     
                     {% if current_user.is_authenticated %}

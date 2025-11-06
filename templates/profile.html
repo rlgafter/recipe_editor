@@ -18,7 +18,13 @@
                     </div>
                     <div class="col-md-6">
                         <h5>Email</h5>
-                        <p class="text-muted">{{ current_user.email }}</p>
+                        <p class="text-muted">
+                            {{ current_user.email }}
+                            {% if current_user.pending_email %}
+                                <span class="badge bg-warning text-dark ms-2">Change Pending</span>
+                                <br><small class="text-info">Pending: {{ current_user.pending_email }}</small>
+                            {% endif %}
+                        </p>
                     </div>
                 </div>
                 
@@ -55,7 +61,100 @@
                     </div>
                 </div>
                 
+                <hr class="my-4">
+                
+                <!-- Action Buttons -->
+                <div class="text-center">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="bi bi-pencil"></i> Edit Profile
+                    </button>
+                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#changeEmailModal">
+                        <i class="bi bi-envelope"></i> Change Email
+                    </button>
+                </div>
+                
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="update_profile">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Display Name</label>
+                        <input type="text" class="form-control" name="display_name" 
+                               value="{{ current_user.display_name or '' }}" 
+                               placeholder="Enter your display name">
+                        <small class="form-text text-muted">This name will be displayed throughout the site</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Change Email Modal -->
+<div class="modal fade" id="changeEmailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">Change Email Address</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="change_email">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> <strong>Email Verification Required:</strong>
+                        <p class="mb-0 small">A verification email will be sent to your new address. Your current email remains active until you verify the new one.</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Current Email</label>
+                        <input type="text" class="form-control" value="{{ current_user.email }}" disabled>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">New Email Address</label>
+                        <input type="email" class="form-control" name="new_email" 
+                               placeholder="Enter new email address" required>
+                        <small class="form-text text-muted">We'll send a verification link to this address</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Current Password</label>
+                        <input type="password" class="form-control" name="current_password" 
+                               placeholder="Enter your current password for security" required>
+                        <small class="form-text text-muted">Required for security verification</small>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Security Notice:</strong>
+                        <ul class="mb-0 small">
+                            <li>Notifications will be sent to both your old and new email addresses</li>
+                            <li>The verification link expires in 24 hours</li>
+                            <li>Your current email remains active until verification is complete</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Request Email Change</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

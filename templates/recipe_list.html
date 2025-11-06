@@ -161,17 +161,6 @@
                                 </div>
                                 {% endif %}
                                 
-                                {% if recipe.tags %}
-                                    <div class="mb-2">
-                                        <span class="text-muted">
-                                            <strong>Tags:</strong> 
-                                            {% for tag in recipe.tags %}
-                                                {{ tag.name }}{% if not loop.last %}, {% endif %}
-                                            {% endfor %}
-                                        </span>
-                                    </div>
-                                {% endif %}
-                                
                                 <div class="btn-group btn-group-sm" role="group">
                                     <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}" 
                                        class="btn btn-outline-primary">

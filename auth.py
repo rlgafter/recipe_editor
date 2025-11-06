@@ -173,19 +173,124 @@ def change_password(user: User, old_password: str, new_password: str) -> tuple[b
     return True, "Password changed successfully"
 
 
-def update_user_profile(user: User, display_name: str = None, bio: str = None, 
+def update_user_profile(user: User, display_name: str = None, 
                        avatar_url: str = None) -> bool:
     """Update user profile."""
     if display_name is not None:
         user.display_name = display_name
-    if bio is not None:
-        user.bio = bio
     if avatar_url is not None:
         user.avatar_url = avatar_url
     
     db.session.commit()
     logger.info(f"Updated profile for user: {user.username}")
     return True
+
+
+def request_email_change(user: User, current_password: str, new_email: str) -> tuple[bool, str]:
+    """
+    Request email change with verification.
+    Requires current password for security.
+    Sends verification to new email and notification to old email.
+    """
+    import secrets
+    from datetime import timedelta
+    from email_service import email_service
+    
+    # Verify current password
+    if not verify_password(current_password, user.password_hash):
+        return False, "Current password is incorrect"
+    
+    # Validate new email
+    new_email = new_email.lower().strip()
+    if not new_email or '@' not in new_email:
+        return False, "Valid email address is required"
+    
+    # Check if email is same as current
+    if new_email == user.email:
+        return False, "New email is the same as your current email"
+    
+    # Check if email already exists
+    existing_user = User.query.filter(User.email == new_email).first()
+    if existing_user and existing_user.id != user.id:
+        return False, "This email address is already registered"
+    
+    # Generate verification token
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(hours=24)
+    
+    # Store pending email change
+    user.pending_email = new_email
+    user.email_change_token = token
+    user.email_change_expires = expires_at
+    db.session.commit()
+    
+    # Send verification email to new address
+    verification_success, verification_error = email_service.send_email_change_verification(
+        new_email,
+        user.display_name or user.username,
+        token
+    )
+    
+    if not verification_success:
+        logger.error(f"Failed to send verification email: {verification_error}")
+        return False, f"Failed to send verification email: {verification_error}"
+    
+    # Send notification to old email
+    notification_success, notification_error = email_service.send_email_change_notification(
+        user.email,
+        user.display_name or user.username,
+        new_email
+    )
+    
+    if not notification_success:
+        logger.warning(f"Failed to send notification to old email: {notification_error}")
+    
+    logger.info(f"Email change requested for user {user.username}: {user.email} → {new_email}")
+    return True, f"Verification email sent to {new_email}. Please check your inbox to complete the email change."
+
+
+def verify_email_change(token: str) -> tuple[bool, str]:
+    """
+    Verify email change using token.
+    Updates user email if token is valid and not expired.
+    """
+    user = User.query.filter(User.email_change_token == token).first()
+    
+    if not user:
+        return False, "Invalid verification link"
+    
+    # Check if token expired
+    if user.email_change_expires and datetime.utcnow() > user.email_change_expires:
+        # Clear expired token
+        user.pending_email = None
+        user.email_change_token = None
+        user.email_change_expires = None
+        db.session.commit()
+        return False, "Verification link has expired. Please request a new email change."
+    
+    if not user.pending_email:
+        return False, "No pending email change found"
+    
+    # Check if pending email is already taken (race condition check)
+    existing_user = User.query.filter(User.email == user.pending_email).first()
+    if existing_user and existing_user.id != user.id:
+        user.pending_email = None
+        user.email_change_token = None
+        user.email_change_expires = None
+        db.session.commit()
+        return False, "This email address is already registered by another user"
+    
+    # Update email
+    old_email = user.email
+    user.email = user.pending_email
+    user.email_verified = True  # New email is verified
+    user.pending_email = None
+    user.email_change_token = None
+    user.email_change_expires = None
+    db.session.commit()
+    
+    logger.info(f"Email changed for user {user.username}: {old_email} → {user.email}")
+    return True, "Email address updated successfully!"
 
 
 # ============================================================================

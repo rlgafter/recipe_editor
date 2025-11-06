@@ -25,7 +25,6 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     display_name VARCHAR(100),
-    bio TEXT,
     avatar_url VARCHAR(500),
     email_verified BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
