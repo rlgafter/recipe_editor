@@ -381,16 +381,27 @@ def recipe_list():
     user_id = current_user.id if current_user.is_authenticated else None
     
     # Get filter parameters
+    search_term = request.args.get('search', '').strip()
     selected_tags = request.args.getlist('tags')
     match_all = request.args.get('match_all') == 'true'
     
     # Get all tags
     all_tags = storage.get_all_tags()
     
-    # Get recipes (filtered or all)
-    if selected_tags:
+    # Get recipes (search, filter by tags, or all)
+    if search_term:
+        # Use search with optional tag filtering
+        recipes = storage.search_recipes(
+            search_term=search_term, 
+            tag_names=selected_tags, 
+            match_all_tags=match_all, 
+            user_id=user_id
+        )
+    elif selected_tags:
+        # Filter by tags only
         recipes = storage.filter_recipes_by_tags(selected_tags, match_all, user_id)
     else:
+        # Show all recipes
         recipes = storage.get_all_recipes(user_id)
     
     return render_template(
@@ -398,7 +409,8 @@ def recipe_list():
         recipes=recipes,
         all_tags=all_tags,
         selected_tags=selected_tags,
-        match_all=match_all
+        match_all=match_all,
+        search_term=search_term
     )
 
 

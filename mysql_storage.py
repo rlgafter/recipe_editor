@@ -393,6 +393,73 @@ class MySQLStorage:
         
         return query.order_by(Recipe.updated_at.desc()).all()
     
+    def search_recipes(self, search_term: str, tag_names: Optional[List[str]] = None, 
+                      match_all_tags: bool = False, user_id: Optional[int] = None) -> List[Recipe]:
+        """
+        Search recipes by term across multiple fields.
+        
+        Args:
+            search_term: Search query string (multi-word searches use AND logic)
+            tag_names: Optional list of tag names to filter by
+            match_all_tags: If True, recipe must have ALL tags; if False, ANY tag
+            user_id: Current user ID (None for unauthenticated)
+            
+        Returns:
+            List of Recipe objects matching the search and filters
+        """
+        # Start with base query
+        query = self.db.query(Recipe).options(
+            joinedload(Recipe.owner),
+            joinedload(Recipe.source),
+            joinedload(Recipe.tags)
+        )
+        
+        # Apply search term filter
+        if search_term and search_term.strip():
+            # Split search term into words for AND logic
+            search_words = search_term.strip().split()
+            
+            for word in search_words:
+                # Case-insensitive partial matching across multiple fields
+                word_pattern = f"%{word}%"
+                
+                # Create OR condition for this word across all searchable fields
+                word_condition = or_(
+                    Recipe.name.ilike(word_pattern),
+                    Recipe.description.ilike(word_pattern),
+                    Recipe.instructions.ilike(word_pattern),
+                    Recipe.notes.ilike(word_pattern),
+                    # Search in ingredients JSON (cast to text for searching)
+                    func.cast(Recipe.ingredients_json, db.Text).ilike(word_pattern),
+                    # Search in tag names
+                    Recipe.tags.any(Tag.name.ilike(word_pattern))
+                )
+                
+                # Apply AND logic: recipe must match ALL search words
+                query = query.filter(word_condition)
+        
+        # Apply tag filter if specified
+        if tag_names:
+            tags = self.db.query(Tag).filter(Tag.name.in_(tag_names)).all()
+            tag_ids = [tag.id for tag in tags]
+            
+            if tag_ids:
+                if match_all_tags:
+                    # Must have ALL selected tags
+                    for tag_id in tag_ids:
+                        query = query.filter(Recipe.tags.any(Tag.id == tag_id))
+                else:
+                    # Must have ANY selected tag
+                    query = query.filter(Recipe.tags.any(Tag.id.in_(tag_ids)))
+        
+        # Apply visibility filter based on user permissions
+        if user_id:
+            query = query.filter(or_(Recipe.user_id == user_id, Recipe.visibility == 'public'))
+        else:
+            query = query.filter(Recipe.visibility == 'public')
+        
+        return query.order_by(Recipe.updated_at.desc()).all()
+    
     def delete_tag(self, tag_name: str) -> tuple[bool, str]:
         """Delete a tag if it has no recipes."""
         tag = self.db.query(Tag).filter(Tag.name == tag_name).first()
@@ -521,29 +588,6 @@ class MySQLStorage:
     # ========================================================================
     # SEARCH & FILTER METHODS
     # ========================================================================
-    
-    def search_recipes(self, query: str, user_id: Optional[int] = None) -> List[Recipe]:
-        """Full-text search for recipes."""
-        search_query = self.db.query(Recipe)
-        
-        # Apply permission filter
-        if user_id:
-            search_query = search_query.filter(
-                or_(Recipe.user_id == user_id, Recipe.visibility == 'public')
-            )
-        else:
-            search_query = search_query.filter(Recipe.visibility == 'public')
-        
-        # Full-text search
-        search_query = search_query.filter(
-            or_(
-                Recipe.name.ilike(f'%{query}%'),
-                Recipe.description.ilike(f'%{query}%'),
-                Recipe.instructions.ilike(f'%{query}%')
-            )
-        )
-        
-        return search_query.order_by(Recipe.updated_at.desc()).all()
     
     def find_recipes_by_ingredient(self, ingredient_name: str, user_id: Optional[int] = None) -> List[Recipe]:
         """Find all recipes containing a specific ingredient."""
