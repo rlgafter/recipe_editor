@@ -13,6 +13,11 @@
             <div class="card-body">
                 {% if all_tags %}
                     <form method="GET" action="{{ url_for('recipe_list') }}" id="filterForm">
+                        <!-- Preserve search term when filtering by tags -->
+                        {% if search_term %}
+                        <input type="hidden" name="search" value="{{ search_term }}">
+                        {% endif %}
+                        
                         <div class="mb-3">
                             <label class="form-label">Match:</label>
                             <div class="form-check">
@@ -69,13 +74,36 @@
             </a>
         </div>
 
-        {% if selected_tags %}
-            <div class="alert alert-info">
-                <strong>Filtered by:</strong> 
-                {% for tag in selected_tags %}
-                    <span class="badge bg-primary">{{ tag }}</span>
-                {% endfor %}
-                <span class="ms-2">({{ "All tags" if match_all else "Any tag" }})</span>
+        {% if search_term %}
+            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                <div>
+                    <strong><i class="bi bi-search"></i> Search:</strong> 
+                    <span class="badge bg-success">{{ search_term }}</span>
+                    {% if selected_tags %}
+                        <span class="ms-2"><strong>+ Tags:</strong> 
+                        {% for tag in selected_tags %}
+                            <span class="badge bg-primary">{{ tag }}</span>
+                        {% endfor %}
+                        <span class="ms-1">({{ "All tags" if match_all else "Any tag" }})</span>
+                        </span>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('recipe_list') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear All
+                </a>
+            </div>
+        {% elif selected_tags %}
+            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>Filtered by:</strong> 
+                    {% for tag in selected_tags %}
+                        <span class="badge bg-primary">{{ tag }}</span>
+                    {% endfor %}
+                    <span class="ms-2">({{ "All tags" if match_all else "Any tag" }})</span>
+                </div>
+                <a href="{{ url_for('recipe_list') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear
+                </a>
             </div>
         {% endif %}
 
@@ -197,7 +225,9 @@
         {% else %}
             <div class="alert alert-warning">
                 <i class="bi bi-exclamation-triangle"></i> 
-                {% if selected_tags %}
+                {% if search_term %}
+                    No recipes found matching "{{ search_term }}"{% if selected_tags %} with the selected tags{% endif %}.
+                {% elif selected_tags %}
                     No recipes found matching the selected tags.
                 {% else %}
                     No recipes yet. <a href="{{ url_for('recipe_new') }}">Create your first recipe</a>!
