@@ -499,25 +499,32 @@
                         
                         {% if all_tags %}
                             <div class="mb-2">
-                                <small class="text-muted">Select existing tags:</small>
-                                <div class="mt-2">
+                                <small class="text-muted">Select from your tags (System tags and Personal tags):</small>
+                                <div class="row mt-2 g-2">
                                     {% for tag_name, tag in all_tags.items()|sort %}
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" 
-                                                   type="checkbox" 
-                                                   name="tag_{{ tag_name }}" 
-                                                   id="tag_{{ tag_name }}"
-                                                   {% if recipe and recipe.tags and tag_name in recipe.tags|map(attribute='name') %}checked{% endif %}>
-                                            <label class="form-check-label" for="tag_{{ tag_name }}">
-                                                {{ tag_name }}
-                                            </label>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       name="tag_{{ tag_name }}" 
+                                                       id="tag_{{ tag_name }}"
+                                                       {% if recipe and recipe.tags and tag_name in recipe.tags|map(attribute='name') %}checked{% endif %}>
+                                                <label class="form-check-label" for="tag_{{ tag_name }}">
+                                                    {{ tag_name }}
+                                                    {% if tag.scope == 'system' %}
+                                                        <i class="bi bi-star-fill text-primary" title="System tag (available to all users)"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-person-fill text-info" title="Personal tag (only you can use)"></i>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
                                         </div>
                                     {% endfor %}
                                 </div>
                             </div>
                         {% else %}
                             <div class="mb-2">
-                                <small class="text-muted">No existing tags found. Create some tags by entering them below.</small>
+                                <small class="text-muted">No existing tags found. Create some personal tags by entering them below.</small>
                             </div>
                         {% endif %}
                         
@@ -534,7 +541,11 @@
                                    autocomplete="off">
                         </div>
                         <div class="form-text">
-                            Tags are case-insensitive (stored as uppercase) and help organize your recipes
+                            <i class="bi bi-info-circle"></i> 
+                            Tags are case-insensitive and help organize your recipes. 
+                            New tags you create will be personal tags (only visible to you).
+                            <i class="bi bi-star-fill text-primary"></i> = System tag (all users) | 
+                            <i class="bi bi-person-fill text-info"></i> = Personal tag (only you)
                         </div>
                     </div>
                 </div>

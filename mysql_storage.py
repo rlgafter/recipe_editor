@@ -212,14 +212,36 @@ class MySQLStorage:
             )
             self.db.add(source)
         
+        # Check if recipe is being converted to public
+        old_visibility = recipe.visibility if recipe_id else None
+        new_visibility = recipe_data.get('visibility', 'private')
+        converting_to_public = (old_visibility != 'public' and new_visibility == 'public')
+        
         # Update tags
         recipe.tags.clear()
+        personal_tag_names = []
+        
         for tag_name in recipe_data.get('tags', []):
-            tag = self.get_or_create_tag(tag_name.upper().strip())
-            recipe.tags.append(tag)
+            tag_name = tag_name.upper().strip()
+            tag = self.get_or_create_tag(tag_name, user_id, 'personal')
+            
+            # If converting to public and tag is personal, save name for notes
+            if converting_to_public and tag.is_personal:
+                personal_tag_names.append(tag.name)
+            else:
+                recipe.tags.append(tag)
+        
+        # If converting to public and there are personal tags, add to notes
+        if converting_to_public and personal_tag_names:
+            personal_tags_note = f"\n\nPersonal Tags: {', '.join(personal_tag_names)}\n"
+            recipe.notes = (recipe.notes or '').strip() + personal_tags_note
+            logger.info(f"Converted {len(personal_tag_names)} personal tags to notes for public recipe")
         
         self.db.commit()
         self.db.refresh(recipe)
+        
+        # Cleanup orphaned personal tags for this user
+        self.cleanup_orphaned_tags(user_id)
         
         logger.info(f"Saved recipe {recipe.id}: {recipe.name}")
         return recipe
@@ -332,44 +354,140 @@ class MySQLStorage:
     # TAG METHODS
     # ========================================================================
     
-    def get_all_tags(self) -> Dict[str, Dict]:
-        """Get all tags with recipe counts."""
+    def get_all_tags(self, user_id: Optional[int] = None) -> Dict[str, Dict]:
+        """
+        Get all tags available to a user with recipe counts.
+        Returns system tags + user's personal tags.
+        
+        Args:
+            user_id: User ID (None for system tags only, e.g., for admin viewing all)
+            
+        Returns:
+            Dict mapping tag_name to tag info dict
+        """
         from sqlalchemy import func
         from db_models import recipe_tags
         
-        # Single query to get tag names and counts
-        query = self.db.query(Tag.name, func.count(recipe_tags.c.recipe_id).label('count'))\
+        if user_id is None:
+            # Return all tags (for admin interface)
+            query = self.db.query(Tag, func.count(recipe_tags.c.recipe_id).label('count'))\
+                .outerjoin(recipe_tags)\
+                .group_by(Tag.id)\
+                .all()
+            
+            return {
+                tag.name: {
+                    'id': tag.id,
+                    'name': tag.name,
+                    'count': count,
+                    'scope': tag.tag_scope,
+                    'user_id': tag.user_id,
+                    'recipe_count': count
+                } 
+                for tag, count in query
+            }
+        
+        # Get system tags + user's personal tags
+        query = self.db.query(Tag, func.count(recipe_tags.c.recipe_id).label('count'))\
             .outerjoin(recipe_tags)\
-            .group_by(Tag.id, Tag.name)\
+            .filter(
+                or_(
+                    Tag.tag_scope == 'system',
+                    and_(Tag.tag_scope == 'personal', Tag.user_id == user_id)
+                )
+            )\
+            .group_by(Tag.id)\
             .all()
         
-        return {tag_name: {'name': tag_name, 'count': count} for tag_name, count in query}
+        return {
+            tag.name: {
+                'id': tag.id,
+                'name': tag.name,
+                'count': count,
+                'scope': tag.tag_scope,
+                'recipe_count': count
+            } 
+            for tag, count in query
+        }
     
-    def get_or_create_tag(self, name: str) -> Tag:
-        """Get existing tag or create new one."""
+    def get_or_create_tag(self, name: str, user_id: int, tag_scope: str = 'personal') -> Tag:
+        """
+        Get existing tag or create new one.
+        
+        Args:
+            name: Tag name
+            user_id: User ID (for personal tags) or None (for system tags)
+            tag_scope: 'system' or 'personal' (default: 'personal')
+            
+        Returns:
+            Tag object
+        """
         name = name.upper().strip()
         slug = name.lower().replace(' ', '-')
         
-        tag = self.db.query(Tag).filter(Tag.name == name).first()
+        # Look for existing tag
+        if tag_scope == 'system':
+            # System tags: match by name and scope only
+            tag = self.db.query(Tag).filter(
+                Tag.name == name,
+                Tag.tag_scope == 'system'
+            ).first()
+        else:
+            # Personal tags: match by name, user_id, and scope
+            tag = self.db.query(Tag).filter(
+                Tag.name == name,
+                Tag.user_id == user_id,
+                Tag.tag_scope == 'personal'
+            ).first()
         
         if tag:
             return tag
         
-        tag = Tag(name=name, slug=slug)
+        # Create new tag
+        tag = Tag(
+            name=name, 
+            slug=slug,
+            tag_scope=tag_scope,
+            user_id=user_id if tag_scope == 'personal' else None
+        )
         self.db.add(tag)
         self.db.flush()
         
-        logger.info(f"Created new tag: {name}")
+        logger.info(f"Created new {tag_scope} tag: {name}" + (f" for user {user_id}" if tag_scope == 'personal' else ""))
         return tag
     
     def filter_recipes_by_tags(self, tag_names: List[str], match_all: bool = False, 
                                user_id: Optional[int] = None) -> List[Recipe]:
-        """Filter recipes by tags."""
+        """
+        Filter recipes by tags.
+        
+        Args:
+            tag_names: List of tag names to filter by
+            match_all: If True, recipes must have ALL tags; if False, ANY tag
+            user_id: Current user ID (used to resolve personal vs system tags)
+            
+        Returns:
+            List of Recipe objects matching the filter
+        """
         if not tag_names:
             return self.get_all_recipes(user_id)
         
-        # Get tag IDs
-        tags = self.db.query(Tag).filter(Tag.name.in_(tag_names)).all()
+        # Get tag IDs - look for system tags + user's personal tags
+        if user_id:
+            tags = self.db.query(Tag).filter(
+                Tag.name.in_(tag_names),
+                or_(
+                    Tag.tag_scope == 'system',
+                    and_(Tag.tag_scope == 'personal', Tag.user_id == user_id)
+                )
+            ).all()
+        else:
+            # Unauthenticated users can only see system tags
+            tags = self.db.query(Tag).filter(
+                Tag.name.in_(tag_names),
+                Tag.tag_scope == 'system'
+            ).all()
+        
         tag_ids = [tag.id for tag in tags]
         
         if not tag_ids:
@@ -440,7 +558,21 @@ class MySQLStorage:
         
         # Apply tag filter if specified
         if tag_names:
-            tags = self.db.query(Tag).filter(Tag.name.in_(tag_names)).all()
+            # Get tags considering user_id (system + user's personal tags)
+            if user_id:
+                tags = self.db.query(Tag).filter(
+                    Tag.name.in_(tag_names),
+                    or_(
+                        Tag.tag_scope == 'system',
+                        and_(Tag.tag_scope == 'personal', Tag.user_id == user_id)
+                    )
+                ).all()
+            else:
+                tags = self.db.query(Tag).filter(
+                    Tag.name.in_(tag_names),
+                    Tag.tag_scope == 'system'
+                ).all()
+            
             tag_ids = [tag.id for tag in tags]
             
             if tag_ids:
@@ -460,36 +592,176 @@ class MySQLStorage:
         
         return query.order_by(Recipe.updated_at.desc()).all()
     
-    def delete_tag(self, tag_name: str) -> tuple[bool, str]:
-        """Delete a tag if it has no recipes."""
-        tag = self.db.query(Tag).filter(Tag.name == tag_name).first()
+    def delete_tag(self, tag_id: int) -> tuple[bool, str]:
+        """
+        Delete a tag by ID (admin function).
+        System tags cannot be deleted.
+        
+        Args:
+            tag_id: Tag ID to delete
+            
+        Returns:
+            Tuple of (success, message)
+        """
+        tag = self.db.query(Tag).filter(Tag.id == tag_id).first()
         
         if not tag:
-            return False, f"Tag '{tag_name}' not found"
+            return False, "Tag not found"
         
-        if tag.recipe_count > 0:
-            return False, f"Cannot delete tag '{tag_name}' - it has {tag.recipe_count} recipe(s)"
+        # System tags cannot be deleted
+        if tag.tag_scope == 'system':
+            return False, f"Cannot delete system tag '{tag.name}'. System tags are permanent."
         
+        tag_name = tag.name
+        scope = tag.tag_scope
+        
+        # Allow deletion of personal tags even if in use (admin override)
         self.db.delete(tag)
         self.db.commit()
-        return True, f"Tag '{tag_name}' deleted"
+        
+        logger.info(f"Deleted {scope} tag: {tag_name} (ID: {tag_id})")
+        return True, f"Tag '{tag_name}' deleted successfully"
     
-    def update_tag_name(self, old_name: str, new_name: str) -> tuple[bool, str]:
-        """Update a tag name."""
-        tag = self.db.query(Tag).filter(Tag.name == old_name).first()
+    def update_tag(self, tag_id: int, new_name: Optional[str] = None, 
+                   new_scope: Optional[str] = None) -> tuple[bool, str]:
+        """
+        Update a tag's properties (admin function).
+        
+        Args:
+            tag_id: Tag ID to update
+            new_name: New name (optional)
+            new_scope: New scope ('system' or 'personal', optional)
+            
+        Returns:
+            Tuple of (success, message)
+        """
+        tag = self.db.query(Tag).filter(Tag.id == tag_id).first()
         
         if not tag:
-            return False, f"Tag '{old_name}' not found"
+            return False, "Tag not found"
         
-        if tag.recipe_count > 0:
-            return False, f"Cannot rename tag '{old_name}' - it has {tag.recipe_count} recipe(s)"
+        old_name = tag.name
         
-        new_name = new_name.upper().strip()
-        tag.name = new_name
-        tag.slug = new_name.lower().replace(' ', '-')
+        if new_name:
+            new_name = new_name.upper().strip()
+            tag.name = new_name
+            tag.slug = new_name.lower().replace(' ', '-')
+        
+        if new_scope and new_scope in ('system', 'personal'):
+            old_scope = tag.tag_scope
+            tag.tag_scope = new_scope
+            
+            # If converting to system, remove user_id
+            if new_scope == 'system':
+                tag.user_id = None
         
         self.db.commit()
-        return True, f"Tag renamed to '{new_name}'"
+        
+        logger.info(f"Updated tag {old_name} (ID: {tag_id})")
+        return True, f"Tag updated successfully"
+    
+    def convert_personal_to_system_tag(self, tag_name: str) -> tuple[bool, str]:
+        """
+        Convert all personal tags with a given name to a single system tag.
+        Merges all personal tags with the same name into one system tag.
+        
+        Args:
+            tag_name: Name of the tag to convert
+            
+        Returns:
+            Tuple of (success, message)
+        """
+        tag_name = tag_name.upper().strip()
+        
+        # Find all personal tags with this name
+        personal_tags = self.db.query(Tag).filter(
+            Tag.name == tag_name,
+            Tag.tag_scope == 'personal'
+        ).all()
+        
+        if not personal_tags:
+            return False, f"No personal tags found with name '{tag_name}'"
+        
+        # Check if system tag already exists
+        system_tag = self.db.query(Tag).filter(
+            Tag.name == tag_name,
+            Tag.tag_scope == 'system'
+        ).first()
+        
+        if not system_tag:
+            # Create new system tag
+            slug = tag_name.lower().replace(' ', '-')
+            system_tag = Tag(
+                name=tag_name,
+                slug=slug,
+                tag_scope='system',
+                user_id=None
+            )
+            self.db.add(system_tag)
+            self.db.flush()
+            logger.info(f"Created new system tag: {tag_name}")
+        
+        # Update all recipe associations to point to system tag
+        from db_models import recipe_tags
+        
+        for personal_tag in personal_tags:
+            # Get all recipes using this personal tag
+            recipes = personal_tag.recipes
+            
+            for recipe in recipes:
+                # Remove personal tag
+                if personal_tag in recipe.tags:
+                    recipe.tags.remove(personal_tag)
+                
+                # Add system tag if not already present
+                if system_tag not in recipe.tags:
+                    recipe.tags.append(system_tag)
+            
+            # Delete the personal tag
+            self.db.delete(personal_tag)
+        
+        self.db.commit()
+        
+        count = len(personal_tags)
+        logger.info(f"Converted {count} personal '{tag_name}' tags to system tag")
+        return True, f"Converted {count} personal tag(s) to system tag '{tag_name}'"
+    
+    def cleanup_orphaned_tags(self, user_id: Optional[int] = None) -> int:
+        """
+        Delete tags with no associated recipes.
+        System tags are NEVER deleted, even if orphaned.
+        
+        Args:
+            user_id: If provided, only cleanup this user's personal tags
+            
+        Returns:
+            Number of tags deleted
+        """
+        if user_id:
+            # Cleanup only user's personal tags
+            orphaned = self.db.query(Tag).filter(
+                Tag.user_id == user_id,
+                Tag.tag_scope == 'personal',
+                ~Tag.recipes.any()
+            ).all()
+        else:
+            # Cleanup all orphaned PERSONAL tags only (admin function)
+            # System tags are never deleted, even if orphaned
+            orphaned = self.db.query(Tag).filter(
+                Tag.tag_scope == 'personal',
+                ~Tag.recipes.any()
+            ).all()
+        
+        count = len(orphaned)
+        
+        for tag in orphaned:
+            self.db.delete(tag)
+        
+        if count > 0:
+            self.db.commit()
+            logger.info(f"Cleaned up {count} orphaned personal tags" + (f" for user {user_id}" if user_id else ""))
+        
+        return count
     
     # ========================================================================
     # FAVORITE METHODS

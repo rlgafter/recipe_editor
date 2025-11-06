@@ -155,9 +155,8 @@ def auth_profile():
         
         if action == 'update_profile':
             display_name = request.form.get('display_name', '').strip()
-            bio = request.form.get('bio', '').strip()
             
-            update_user_profile(current_user, display_name=display_name, bio=bio)
+            update_user_profile(current_user, display_name=display_name)
             flash('Profile updated successfully!', 'success')
         
         elif action == 'change_password':
@@ -173,8 +172,38 @@ def auth_profile():
                     flash(message, 'success')
                 else:
                     flash(message, 'error')
+        
+        elif action == 'change_email':
+            current_password = request.form.get('current_password', '')
+            new_email = request.form.get('new_email', '').strip().lower()
+            
+            if not current_password:
+                flash('Current password is required to change email', 'error')
+            elif not new_email or '@' not in new_email:
+                flash('Valid email address is required', 'error')
+            else:
+                success, message = request_email_change(current_user, current_password, new_email)
+                if success:
+                    flash(message, 'success')
+                else:
+                    flash(message, 'error')
     
     return render_template('profile.html')
+
+
+@app.route('/verify-email-change/<token>')
+def verify_email_change_route(token):
+    """Verify email change using token."""
+    from auth import verify_email_change
+    
+    success, message = verify_email_change(token)
+    
+    if success:
+        flash(message, 'success')
+        return redirect(url_for('auth_profile'))
+    else:
+        flash(message, 'error')
+        return redirect(url_for('auth_profile'))
 
 
 @app.route('/auth/forgot-password', methods=['GET', 'POST'])
@@ -385,8 +414,9 @@ def recipe_list():
     selected_tags = request.args.getlist('tags')
     match_all = request.args.get('match_all') == 'true'
     
-    # Get all tags
-    all_tags = storage.get_all_tags()
+    # Get all tags (user's personal + system tags)
+    user_id = current_user.id if current_user.is_authenticated else None
+    all_tags = storage.get_all_tags(user_id)
     
     # Get recipes (search, filter by tags, or all)
     if search_term:
@@ -452,7 +482,7 @@ def recipe_view(recipe_id):
 def recipe_new():
     """Create a new recipe."""
     if request.method == 'GET':
-        all_tags = storage.get_all_tags()
+        all_tags = storage.get_all_tags(current_user.id)
         gemini_configured = gemini_service.is_configured()
         return render_template('recipe_form.html', recipe=None, all_tags=all_tags, 
                              new_tags=[], gemini_configured=gemini_configured)
@@ -479,7 +509,7 @@ def recipe_new():
         if not is_valid:
             for error in errors:
                 flash(error, 'error')
-            all_tags = storage.get_all_tags()
+            all_tags = storage.get_all_tags(current_user.id)
             gemini_configured = gemini_service.is_configured()
             app.logger.info("=== RECIPE CREATION DEBUG END (VALIDATION FAILED) ===")
             # Preserve user's entered data in the form
@@ -491,7 +521,7 @@ def recipe_new():
         visibility = recipe_data.get('visibility', 'incomplete')
         if visibility == 'public' and not current_user.can_publish_public_recipes():
             flash('You do not have permission to publish public recipes', 'error')
-            all_tags = storage.get_all_tags()
+            all_tags = storage.get_all_tags(current_user.id)
             gemini_configured = gemini_service.is_configured()
             # Preserve user's entered data in the form
             recipe_form_data = _create_form_data_object(recipe_data)
@@ -508,7 +538,7 @@ def recipe_new():
             if source_url:
                 if not gemini_service.validate_url_accessibility(source_url):
                     flash('The source URL is not publicly accessible. Please provide a valid URL or leave it blank.', 'error')
-                    all_tags = storage.get_all_tags()
+                    all_tags = storage.get_all_tags(current_user.id)
                     gemini_configured = gemini_service.is_configured()
                     # Preserve user's entered data in the form
                     recipe_form_data = _create_form_data_object(recipe_data)
@@ -541,7 +571,7 @@ def recipe_new():
         
         # Preserve user's entered data in the form
         try:
-            all_tags = storage.get_all_tags()
+            all_tags = storage.get_all_tags(current_user.id)
         except:
             all_tags = {}
         gemini_configured = gemini_service.is_configured()
@@ -565,7 +595,7 @@ def recipe_edit(recipe_id):
         return redirect(url_for('recipe_view', recipe_id=recipe_id))
     
     if request.method == 'GET':
-        all_tags = storage.get_all_tags()
+        all_tags = storage.get_all_tags(current_user.id)
         gemini_configured = gemini_service.is_configured()
         return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, 
                              new_tags=[], gemini_configured=gemini_configured)
@@ -579,7 +609,7 @@ def recipe_edit(recipe_id):
         if not is_valid:
             for error in errors:
                 flash(error, 'error')
-            all_tags = storage.get_all_tags()
+            all_tags = storage.get_all_tags(current_user.id)
             gemini_configured = gemini_service.is_configured()
             # Preserve user's entered data in the form
             recipe_form_data = _create_form_data_object(recipe_data, recipe_id)
@@ -590,7 +620,7 @@ def recipe_edit(recipe_id):
         visibility = recipe_data.get('visibility', 'incomplete')
         if visibility == 'public' and not current_user.can_publish_public_recipes():
             flash('You do not have permission to publish public recipes', 'error')
-            all_tags = storage.get_all_tags()
+            all_tags = storage.get_all_tags(current_user.id)
             gemini_configured = gemini_service.is_configured()
             # Preserve user's entered data in the form
             recipe_form_data = _create_form_data_object(recipe_data, recipe_id)
@@ -609,7 +639,7 @@ def recipe_edit(recipe_id):
             if source_url:
                 if not gemini_service.validate_url_accessibility(source_url):
                     flash('The source URL is not publicly accessible. Please provide a valid URL or leave it blank.', 'error')
-                    all_tags = storage.get_all_tags()
+                    all_tags = storage.get_all_tags(current_user.id)
                     gemini_configured = gemini_service.is_configured()
                     # Preserve user's entered data in the form
                     recipe_form_data = _create_form_data_object(recipe_data)
@@ -640,7 +670,7 @@ def recipe_edit(recipe_id):
         
         # Preserve user's entered data in the form
         try:
-            all_tags = storage.get_all_tags()
+            all_tags = storage.get_all_tags(current_user.id)
         except:
             all_tags = {}
         gemini_configured = gemini_service.is_configured()
@@ -898,28 +928,15 @@ def recipe_email(recipe_id):
 # Tag Management
 # ============================================================================
 
-@app.route('/tags', methods=['GET', 'POST'])
+@app.route('/tags')
+@login_required
 def tag_manager():
-    """Manage tags."""
-    if request.method == 'POST':
-        action = request.form.get('action')
-        
-        if action == 'edit':
-            old_name = request.form.get('old_name', '').strip().upper()
-            new_name = request.form.get('new_name', '').strip().upper()
-            
-            success, message = storage.update_tag_name(old_name, new_name)
-            flash(message, 'success' if success else 'error')
-        
-        elif action == 'delete':
-            tag_name = request.form.get('tag_name', '').strip().upper()
-            success, message = storage.delete_tag(tag_name)
-            flash(message, 'success' if success else 'error')
-    
-    all_tags = storage.get_all_tags()
-    sorted_tags = sorted(all_tags.items(), key=lambda x: x[0])
-    
-    return render_template('tag_manager.html', tags=sorted_tags)
+    """Redirect to admin tag management (admin-only feature)."""
+    if current_user.is_admin:
+        return redirect(url_for('admin_tags'))
+    else:
+        flash('Tag management is an admin-only feature', 'error')
+        return redirect(url_for('recipe_list'))
 
 
 # ============================================================================

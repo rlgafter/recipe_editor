@@ -659,6 +659,212 @@ This email was sent from Recipe Editor
             to_name=user_name
         )
     
+    def send_email_change_verification(
+        self,
+        new_email: str,
+        user_name: str,
+        verification_token: str
+    ) -> tuple[bool, str]:
+        """Send verification email to new email address."""
+        verification_url = f"{self.base_url}/verify-email-change/{verification_token}"
+        
+        subject = "Verify Your New Email Address - Recipe Editor"
+        
+        html_content = f"""
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background-color: #2c3e50;
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                    border-radius: 5px 5px 0 0;
+                }}
+                .content {{
+                    background-color: #f8f9fa;
+                    padding: 30px;
+                    border-radius: 0 0 5px 5px;
+                }}
+                .button {{
+                    display: inline-block;
+                    background-color: #3498db;
+                    color: white;
+                    padding: 12px 24px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                }}
+                .warning {{
+                    background-color: #fff3cd;
+                    border-left: 4px solid #ffc107;
+                    padding: 15px;
+                    margin: 20px 0;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>📧 Verify Your New Email</h1>
+            </div>
+            <div class="content">
+                <h2>Hello {user_name}!</h2>
+                <p>You recently requested to change your email address on Recipe Editor.</p>
+                
+                <p><strong>New email:</strong> {new_email}</p>
+                
+                <p>To complete this change, please verify your new email address by clicking the button below:</p>
+                
+                <div style="text-align: center;">
+                    <a href="{verification_url}" class="button">Verify New Email Address</a>
+                </div>
+                
+                <div class="warning">
+                    <strong>⚠️ Important:</strong> This verification link will expire in 24 hours for security reasons.
+                </div>
+                
+                <p><strong>Didn't request this change?</strong> If you didn't request an email change, please ignore this email. Your current email address will remain active.</p>
+                
+                <p>Thank you,<br>Recipe Editor Team</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        Verify Your New Email Address
+        
+        Hello {user_name}!
+        
+        You recently requested to change your email address on Recipe Editor.
+        
+        New email: {new_email}
+        
+        To complete this change, please verify your new email address by visiting:
+        {verification_url}
+        
+        IMPORTANT: This verification link will expire in 24 hours for security reasons.
+        
+        Didn't request this change? If you didn't request an email change, please ignore this email. Your current email address will remain active.
+        
+        Thank you,
+        Recipe Editor Team
+        """
+        
+        return self.send_email(
+            to_email=new_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+            to_name=user_name
+        )
+    
+    def send_email_change_notification(
+        self,
+        old_email: str,
+        user_name: str,
+        new_email: str
+    ) -> tuple[bool, str]:
+        """Send notification to old email about email change request."""
+        subject = "Email Change Request - Recipe Editor"
+        
+        html_content = f"""
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background-color: #2c3e50;
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                    border-radius: 5px 5px 0 0;
+                }}
+                .content {{
+                    background-color: #f8f9fa;
+                    padding: 30px;
+                    border-radius: 0 0 5px 5px;
+                }}
+                .warning {{
+                    background-color: #fff3cd;
+                    border-left: 4px solid #ffc107;
+                    padding: 15px;
+                    margin: 20px 0;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>📧 Email Change Request</h1>
+            </div>
+            <div class="content">
+                <h2>Hello {user_name}!</h2>
+                <p>A request has been made to change your email address on Recipe Editor.</p>
+                
+                <p><strong>Current email:</strong> {old_email}</p>
+                <p><strong>New email:</strong> {new_email}</p>
+                
+                <div class="warning">
+                    <strong>⚠️ Security Notice:</strong> A verification email has been sent to the new address. Your current email will remain active until the new email is verified.
+                </div>
+                
+                <p><strong>Didn't request this change?</strong> If you didn't request this change, please:</p>
+                <ul>
+                    <li>Log in to your account immediately</li>
+                    <li>Change your password</li>
+                    <li>Contact support if you suspect unauthorized access</li>
+                </ul>
+                
+                <p>Thank you,<br>Recipe Editor Team</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        Email Change Request
+        
+        Hello {user_name}!
+        
+        A request has been made to change your email address on Recipe Editor.
+        
+        Current email: {old_email}
+        New email: {new_email}
+        
+        SECURITY NOTICE: A verification email has been sent to the new address. Your current email will remain active until the new email is verified.
+        
+        Didn't request this change? If you didn't request this change, please:
+        - Log in to your account immediately
+        - Change your password
+        - Contact support if you suspect unauthorized access
+        
+        Thank you,
+        Recipe Editor Team
+        """
+        
+        return self.send_email(
+            to_email=old_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+            to_name=user_name
+        )
+    
     # ============================================================================
     # RECIPE EMAIL METHODS (EXISTING)
     # ============================================================================

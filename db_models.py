@@ -25,7 +25,6 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     display_name = db.Column(db.String(100))
-    bio = db.Column(Text)
     avatar_url = db.Column(db.String(500))
     email_verified = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
@@ -39,6 +38,11 @@ class User(UserMixin, db.Model):
     password_setup_token = db.Column(db.String(100), nullable=True)
     password_setup_expires = db.Column(db.DateTime, nullable=True)
     account_setup_completed = db.Column(db.Boolean, default=False)
+    
+    # Email change fields
+    pending_email = db.Column(db.String(255), nullable=True)
+    email_change_token = db.Column(db.String(100), nullable=True)
+    email_change_expires = db.Column(db.DateTime, nullable=True)
     
     # Relationships (simplified - no user_type relationship)
     recipes = db.relationship('Recipe', backref='owner', lazy='dynamic', cascade='all, delete-orphan')
@@ -342,12 +346,14 @@ recipe_tags = db.Table('recipe_tags',
 )
 
 class Tag(db.Model):
-    """Recipe tags."""
+    """Recipe tags - can be system-wide or personal to a user."""
     __tablename__ = 'tags'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False)
-    slug = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    slug = db.Column(db.String(100), nullable=False)
+    tag_scope = db.Column(db.Enum('system', 'personal'), default='personal', nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=True)
     description = db.Column(Text)
     tag_type = db.Column(db.Enum('cuisine', 'diet', 'meal_type', 'method', 'occasion', 'season', 'other'), default='other')
     icon = db.Column(db.String(100))
@@ -355,14 +361,27 @@ class Tag(db.Model):
     
     # Relationships
     recipes = db.relationship('Recipe', secondary=recipe_tags, back_populates='tags')
+    user = db.relationship('User', backref='tags')
     
     @property
     def recipe_count(self):
         """Get count of recipes with this tag."""
         return len(self.recipes)
     
+    @property
+    def is_system(self):
+        """Check if this is a system tag."""
+        return self.tag_scope == 'system'
+    
+    @property
+    def is_personal(self):
+        """Check if this is a personal tag."""
+        return self.tag_scope == 'personal'
+    
     def __repr__(self):
-        return f'<Tag {self.name}>'
+        scope = f" ({self.tag_scope})" if self.tag_scope else ""
+        owner = f" [User:{self.user_id}]" if self.user_id else ""
+        return f'<Tag {self.name}{scope}{owner}>'
 
 
 # ============================================================================
