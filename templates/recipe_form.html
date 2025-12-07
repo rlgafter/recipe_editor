@@ -1083,6 +1083,9 @@ const visibilitySelect = document.getElementById('visibility');
 const recipeForm = document.getElementById('recipeForm');
 const submitButton = document.getElementById('submitButton');
 
+// Determine if this is a new recipe or editing existing recipe
+const isNewRecipe = {% if not recipe %}true{% else %}false{% endif %};
+
 // For new recipes, use the actual default value from the form (first option)
 // For existing recipes, use the recipe's current visibility
 let originalVisibility = visibilitySelect ? visibilitySelect.value : 'incomplete';
@@ -1094,6 +1097,7 @@ if (!originalVisibility || originalVisibility === '') {
 }
 {% endif %}
 console.log('Initialized originalVisibility:', originalVisibility);
+console.log('Is new recipe:', isNewRecipe);
 let confirmationPending = false;
 let bypassConfirmation = false;
 
@@ -1103,56 +1107,119 @@ if (recipeForm && visibilitySelect && submitButton) {
         const currentVisibility = visibilitySelect.value;
         
         console.log('Form submit event triggered');
+        console.log('Is new recipe:', isNewRecipe);
         console.log('Original visibility:', originalVisibility);
         console.log('Current visibility:', currentVisibility);
         console.log('Bypass confirmation:', bypassConfirmation);
         
-        // If we've already confirmed or no visibility change, submit normally
+        // If we've already confirmed, submit normally
         if (bypassConfirmation) {
             bypassConfirmation = false;  // Reset for next time
             console.log('Bypassing confirmation, allowing submit');
             return true;
         }
         
-        // Check if visibility is being changed
+        // For NEW recipes, skip visibility change detection - just check if trying to publish public
+        if (isNewRecipe) {
+            console.log('New recipe - checking public visibility permission');
+            {% if not current_user.is_admin %}
+            // Regular user confirmation when creating public recipe
+            if (currentVisibility === 'public') {
+                console.log('PREVENTING SUBMIT: Public visibility confirmation needed for new recipe');
+                e.preventDefault();
+                
+                // Show public warning modal
+                try {
+                    const publicModalElement = document.getElementById('visibilityPublicModal');
+                    if (publicModalElement) {
+                        const publicModal = new bootstrap.Modal(publicModalElement);
+                        publicModal.show();
+                        console.log('Showing public visibility confirmation modal');
+                    } else {
+                        console.error('Public modal element not found - allowing submit anyway');
+                        // Fallback: allow submit if modal doesn't exist
+                        return true;
+                    }
+                } catch (error) {
+                    console.error('Error showing public modal:', error);
+                    // Fallback: allow submit if modal fails
+                    return true;
+                }
+                return false;
+            }
+            {% endif %}
+            // For new recipes, allow submit if not public (or if admin)
+            console.log('Allowing new recipe to submit normally');
+            return true;
+        }
+        
+        // For EXISTING recipes, check if visibility is being changed
         const visibilityChanged = originalVisibility !== currentVisibility;
-        console.log('Visibility changed:', visibilityChanged);
+        console.log('Editing existing recipe - visibility changed:', visibilityChanged);
         
         {% if current_user.is_admin %}
-        // Admin confirmation for ANY visibility change
+        // Admin confirmation for ANY visibility change when editing
         if (visibilityChanged) {
             console.log('PREVENTING SUBMIT: Admin visibility confirmation needed');
             e.preventDefault();
             
-            // Populate modal with visibility values
-            const oldVisDisplay = document.getElementById('oldVisibility');
-            const newVisDisplay = document.getElementById('newVisibility');
-            
-            const visibilityLabels = {
-                'incomplete': 'Incomplete',
-                'private': 'Private',
-                'public': 'Public'
-            };
-            
-            oldVisDisplay.textContent = visibilityLabels[originalVisibility] || originalVisibility;
-            newVisDisplay.textContent = visibilityLabels[currentVisibility] || currentVisibility;
-            
-            // Show admin modal
-            const adminModal = new bootstrap.Modal(document.getElementById('visibilityAdminModal'));
-            adminModal.show();
-            console.log('Showing admin visibility confirmation modal');
+            try {
+                // Populate modal with visibility values
+                const oldVisDisplay = document.getElementById('oldVisibility');
+                const newVisDisplay = document.getElementById('newVisibility');
+                
+                if (oldVisDisplay && newVisDisplay) {
+                    const visibilityLabels = {
+                        'incomplete': 'Incomplete',
+                        'private': 'Private',
+                        'public': 'Public'
+                    };
+                    
+                    oldVisDisplay.textContent = visibilityLabels[originalVisibility] || originalVisibility;
+                    newVisDisplay.textContent = visibilityLabels[currentVisibility] || currentVisibility;
+                }
+                
+                // Show admin modal
+                const adminModalElement = document.getElementById('visibilityAdminModal');
+                if (adminModalElement) {
+                    const adminModal = new bootstrap.Modal(adminModalElement);
+                    adminModal.show();
+                    console.log('Showing admin visibility confirmation modal');
+                } else {
+                    console.error('Admin modal element not found - allowing submit anyway');
+                    // Fallback: allow submit if modal doesn't exist
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error showing admin modal:', error);
+                // Fallback: allow submit if modal fails
+                return true;
+            }
             return false;
         }
         {% else %}
-        // Regular user confirmation when changing TO public
+        // Regular user confirmation when changing TO public when editing
         if (currentVisibility === 'public' && originalVisibility !== 'public') {
             console.log('PREVENTING SUBMIT: Public visibility confirmation needed');
             e.preventDefault();
             
-            // Show public warning modal
-            const publicModal = new bootstrap.Modal(document.getElementById('visibilityPublicModal'));
-            publicModal.show();
-            console.log('Showing public visibility confirmation modal');
+            try {
+                // Show public warning modal
+                const publicModalElement = document.getElementById('visibilityPublicModal');
+                if (publicModalElement) {
+                    const publicModal = new bootstrap.Modal(publicModalElement);
+                    publicModal.show();
+                    console.log('Showing public visibility confirmation modal');
+                } else {
+                    console.error('Public modal element not found - allowing submit anyway');
+                    // Fallback: allow submit if modal doesn't exist
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error showing public modal:', error);
+                // Fallback: allow submit if modal fails
+                return true;
+            }
             return false;
         }
         {% endif %}
