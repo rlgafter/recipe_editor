@@ -6,6 +6,24 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
+# Load .env file if it exists (handles export VAR=value format)
+try:
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and 'export ' in line:
+                    # Handle export VAR=value format
+                    key_value = line.replace('export ', '').strip()
+                    if '=' in key_value:
+                        key, value = key_value.split('=', 1)
+                        # Remove quotes from value
+                        value = value.strip('\'"')
+                        os.environ[key.strip()] = value
+except Exception as e:
+    print(f"Warning: Could not load .env file: {e}")
+
 import config
 from flask import Flask
 from db_models import db

@@ -41,7 +41,7 @@ is_running() {
 start_server() {
     if is_running; then
         print_msg "Server is already running (PID: $(cat $PID_FILE))" "$YELLOW"
-        print_msg "Access at: http://localhost:5001" "$GREEN"
+        print_msg "Access at: http://localhost:6666" "$GREEN"
         return 1
     fi
 
@@ -87,7 +87,7 @@ start_server() {
     if is_running; then
         PID=$(cat "$PID_FILE")
         print_msg "✓ Server started successfully (PID: $PID)" "$GREEN"
-        print_msg "Access at: http://localhost:5001" "$GREEN"
+        print_msg "Access at: http://localhost:6666" "$GREEN"
         print_msg "Logs: $LOG_FILE" "$GREEN"
     else
         print_msg "✗ Failed to start server. Check logs: $LOG_FILE" "$RED"
@@ -138,7 +138,7 @@ status_server() {
     if is_running; then
         PID=$(cat "$PID_FILE")
         print_msg "Server is running (PID: $PID)" "$GREEN"
-        print_msg "Access at: http://localhost:5001" "$GREEN"
+        print_msg "Access at: http://localhost:6666" "$GREEN"
         print_msg "Logs: $LOG_FILE" "$GREEN"
     else
         print_msg "Server is not running" "$YELLOW"

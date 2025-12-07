@@ -12,7 +12,7 @@ from datetime import datetime
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import SQLALCHEMY_DATABASE_URI
+import db_config
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -37,7 +37,8 @@ def run_migration():
         logger.info("Starting migration: Add ingredients_json field")
         
         # Create database connection
-        engine = create_engine(SQLALCHEMY_DATABASE_URI)
+        database_uri = db_config.get_database_uri()
+        engine = create_engine(database_uri)
         
         with engine.connect() as conn:
             # Check if the field already exists

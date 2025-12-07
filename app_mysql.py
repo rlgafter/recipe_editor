@@ -8,65 +8,187 @@ from flask_login import login_user, logout_user, login_required, current_user
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import sys
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Setup basic logging first (before any imports that might fail)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stderr)]
+)
+logger = logging.getLogger(__name__)
 
-import config
-from db_models import db
-from mysql_storage import MySQLStorage, init_storage
-from auth import init_auth, authenticate_user, create_user as create_user_account, change_password, update_user_profile
-from gemini_service import gemini_service
-from email_service import email_service
-from admin_routes import register_admin_routes
+logger.debug("=" * 70)
+logger.debug("Recipe Editor - Starting Application")
+logger.debug("=" * 70)
+
+# Load environment variables from .env file
+logger.debug("[1/10] Loading environment variables...")
+try:
+    env_loaded = load_dotenv()
+    logger.debug(f"  .env file loaded: {env_loaded}")
+    if os.path.exists('.env'):
+        logger.debug(f"  .env file exists at: {os.path.abspath('.env')}")
+    else:
+        logger.warning("  .env file not found")
+except Exception as e:
+    logger.error(f"  Error loading .env file: {e}", exc_info=True)
+
+logger.debug("[2/10] Importing configuration...")
+try:
+    import config
+    logger.debug(f"  Config loaded: HOST={config.HOST}, PORT={config.PORT}, DEBUG={config.DEBUG}")
+    logger.debug(f"  Database URI: {config.SQLALCHEMY_DATABASE_URI.split('@')[0]}@...")
+except Exception as e:
+    logger.error(f"  Error importing config: {e}", exc_info=True)
+    raise
+
+logger.debug("[3/10] Importing database models...")
+try:
+    from db_models import db
+    logger.debug("  Database models imported successfully")
+except Exception as e:
+    logger.error(f"  Error importing db_models: {e}", exc_info=True)
+    raise
+
+logger.debug("[4/10] Importing storage module...")
+try:
+    from mysql_storage import MySQLStorage, init_storage
+    logger.debug("  Storage module imported successfully")
+except Exception as e:
+    logger.error(f"  Error importing mysql_storage: {e}", exc_info=True)
+    raise
+
+logger.debug("[5/10] Importing authentication module...")
+try:
+    from auth import init_auth, authenticate_user, create_user as create_user_account, change_password, update_user_profile, request_email_change
+    logger.debug("  Authentication module imported successfully")
+except Exception as e:
+    logger.error(f"  Error importing auth: {e}", exc_info=True)
+    raise
+
+logger.debug("[6/10] Importing service modules...")
+try:
+    from gemini_service import gemini_service
+    logger.debug("  Gemini service imported")
+except Exception as e:
+    logger.warning(f"  Warning importing gemini_service: {e}")
+
+try:
+    from email_service import email_service
+    logger.debug("  Email service imported")
+except Exception as e:
+    logger.warning(f"  Warning importing email_service: {e}")
+
+logger.debug("[7/10] Importing admin routes...")
+try:
+    from admin_routes import register_admin_routes
+    logger.debug("  Admin routes module imported successfully")
+except Exception as e:
+    logger.error(f"  Error importing admin_routes: {e}", exc_info=True)
+    raise
 
 # Initialize Flask app
-app = Flask(__name__)
-app.config['SECRET_KEY'] = config.SECRET_KEY
-app.config['SQLALCHEMY_DATABASE_URI'] = config.SQLALCHEMY_DATABASE_URI
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = config.SQLALCHEMY_TRACK_MODIFICATIONS
-app.config['SQLALCHEMY_ECHO'] = config.SQLALCHEMY_ECHO
+logger.debug("[8/10] Initializing Flask application...")
+try:
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = config.SECRET_KEY
+    app.config['SQLALCHEMY_DATABASE_URI'] = config.SQLALCHEMY_DATABASE_URI
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = config.SQLALCHEMY_TRACK_MODIFICATIONS
+    app.config['SQLALCHEMY_ECHO'] = config.SQLALCHEMY_ECHO
+    logger.debug("  Flask app created and configured")
+except Exception as e:
+    logger.error(f"  Error initializing Flask app: {e}", exc_info=True)
+    raise
 
 # Initialize database
-db.init_app(app)
+logger.debug("[9/10] Initializing database connection...")
+try:
+    db.init_app(app)
+    logger.debug("  Database initialized with Flask app")
+    
+    # Test database connection
+    with app.app_context():
+        try:
+            from db_config import test_connection
+            success, msg = test_connection()
+            if success:
+                logger.debug(f"  Database connection test: {msg}")
+            else:
+                logger.error(f"  Database connection test failed: {msg}")
+        except Exception as e:
+            logger.warning(f"  Could not test database connection: {e}")
+except Exception as e:
+    logger.error(f"  Error initializing database: {e}", exc_info=True)
+    raise
 
 # Initialize authentication
-init_auth(app)
+logger.debug("[10/10] Initializing authentication...")
+try:
+    init_auth(app)
+    logger.debug("  Authentication initialized")
+except Exception as e:
+    logger.error(f"  Error initializing authentication: {e}", exc_info=True)
+    raise
 
 # Initialize storage
-with app.app_context():
-    storage = init_storage(db.session)
+logger.debug("Initializing storage...")
+try:
+    with app.app_context():
+        storage = init_storage(db.session)
+        logger.debug("  Storage initialized successfully")
+except Exception as e:
+    logger.error(f"  Error initializing storage: {e}", exc_info=True)
+    raise
 
 # Register admin routes
-register_admin_routes(app)
+logger.debug("Registering admin routes...")
+try:
+    register_admin_routes(app)
+    logger.debug("  Admin routes registered")
+except Exception as e:
+    logger.error(f"  Error registering admin routes: {e}", exc_info=True)
+    raise
 
 # Configure logging
-if not os.path.exists(config.LOGS_DIR):
-    os.makedirs(config.LOGS_DIR)
+logger.debug("Configuring application logging...")
+try:
+    if not os.path.exists(config.LOGS_DIR):
+        os.makedirs(config.LOGS_DIR)
+        logger.debug(f"  Created logs directory: {config.LOGS_DIR}")
 
-file_handler = RotatingFileHandler(
-    config.LOG_FILE,
-    maxBytes=1024 * 1024,
-    backupCount=10
-)
-file_handler.setFormatter(logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-))
-file_handler.setLevel(logging.INFO)
+    file_handler = RotatingFileHandler(
+        config.LOG_FILE,
+        maxBytes=1024 * 1024,
+        backupCount=10
+    )
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    ))
+    file_handler.setLevel(logging.DEBUG)  # Changed to DEBUG
 
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter(
-    '%(asctime)s - %(levelname)s - %(message)s'
-))
-console_handler.setLevel(logging.INFO)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(message)s'
+    ))
+    console_handler.setLevel(logging.DEBUG)  # Changed to DEBUG
 
-logger = logging.getLogger()
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
-logger.setLevel(logging.INFO)
-
-app.logger.info("Recipe Editor (MySQL) application starting")
+    # Get root logger and configure
+    root_logger = logging.getLogger()
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    root_logger.setLevel(logging.DEBUG)  # Changed to DEBUG
+    
+    # Also set Flask app logger to DEBUG
+    app.logger.setLevel(logging.DEBUG)
+    
+    logger.debug(f"  Logging configured: file={config.LOG_FILE}, level=DEBUG")
+    app.logger.info("Recipe Editor (MySQL) application starting")
+    app.logger.debug("Debug logging enabled")
+except Exception as e:
+    logger.error(f"  Error configuring logging: {e}", exc_info=True)
+    # Continue anyway - basic logging is already set up
 
 
 # ============================================================================
@@ -407,41 +529,90 @@ def setup_password(token):
 @app.route('/recipes')
 def recipe_list():
     """Display list of recipes."""
-    user_id = current_user.id if current_user.is_authenticated else None
-    
-    # Get filter parameters
-    search_term = request.args.get('search', '').strip()
-    selected_tags = request.args.getlist('tags')
-    match_all = request.args.get('match_all') == 'true'
-    
-    # Get all tags (user's personal + system tags)
-    user_id = current_user.id if current_user.is_authenticated else None
-    all_tags = storage.get_all_tags(user_id)
-    
-    # Get recipes (search, filter by tags, or all)
-    if search_term:
-        # Use search with optional tag filtering
-        recipes = storage.search_recipes(
-            search_term=search_term, 
-            tag_names=selected_tags, 
-            match_all_tags=match_all, 
-            user_id=user_id
-        )
-    elif selected_tags:
-        # Filter by tags only
-        recipes = storage.filter_recipes_by_tags(selected_tags, match_all, user_id)
-    else:
-        # Show all recipes
-        recipes = storage.get_all_recipes(user_id)
-    
-    return render_template(
-        'recipe_list.html',
-        recipes=recipes,
-        all_tags=all_tags,
-        selected_tags=selected_tags,
-        match_all=match_all,
-        search_term=search_term
-    )
+    try:
+        app.logger.debug("=" * 70)
+        app.logger.debug("RECIPE_LIST ROUTE - Starting request handling")
+        app.logger.debug("=" * 70)
+        
+        # Check current_user status
+        app.logger.debug(f"Current user authenticated: {current_user.is_authenticated}")
+        if current_user.is_authenticated:
+            app.logger.debug(f"Current user ID: {current_user.id}, Username: {current_user.username}")
+        else:
+            app.logger.debug("Current user is anonymous")
+        
+        user_id = current_user.id if current_user.is_authenticated else None
+        app.logger.debug(f"Using user_id: {user_id}")
+        
+        # Get filter parameters
+        search_term = request.args.get('search', '').strip()
+        selected_tags = request.args.getlist('tags')
+        match_all = request.args.get('match_all') == 'true'
+        
+        app.logger.debug(f"Request parameters - search_term: '{search_term}', selected_tags: {selected_tags}, match_all: {match_all}")
+        
+        # Get all tags (user's personal + system tags)
+        app.logger.debug("Fetching all tags...")
+        try:
+            all_tags = storage.get_all_tags(user_id)
+            app.logger.debug(f"Retrieved {len(all_tags) if all_tags else 0} tags")
+        except Exception as e:
+            app.logger.error(f"Error fetching tags: {e}", exc_info=True)
+            all_tags = {}
+        
+        # Get recipes (search, filter by tags, or all)
+        app.logger.debug("Fetching recipes...")
+        try:
+            if search_term:
+                app.logger.debug(f"Using search_recipes with term: '{search_term}'")
+                recipes = storage.search_recipes(
+                    search_term=search_term, 
+                    tag_names=selected_tags, 
+                    match_all_tags=match_all, 
+                    user_id=user_id
+                )
+            elif selected_tags:
+                app.logger.debug(f"Filtering by tags: {selected_tags}")
+                recipes = storage.filter_recipes_by_tags(selected_tags, match_all, user_id)
+            else:
+                app.logger.debug("Fetching all recipes")
+                recipes = storage.get_all_recipes(user_id)
+            
+            app.logger.debug(f"Retrieved {len(recipes) if recipes else 0} recipes")
+        except Exception as e:
+            app.logger.error(f"Error fetching recipes: {e}", exc_info=True)
+            import traceback
+            app.logger.error(f"Traceback: {traceback.format_exc()}")
+            recipes = []
+        
+        app.logger.debug("Rendering template...")
+        try:
+            return render_template(
+                'recipe_list.html',
+                recipes=recipes,
+                all_tags=all_tags,
+                selected_tags=selected_tags,
+                match_all=match_all,
+                search_term=search_term
+            )
+        except Exception as e:
+            app.logger.error(f"Error rendering template: {e}", exc_info=True)
+            import traceback
+            app.logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
+        
+    except Exception as e:
+        app.logger.error("=" * 70)
+        app.logger.error("RECIPE_LIST ROUTE - FATAL ERROR")
+        app.logger.error("=" * 70)
+        app.logger.error(f"Error type: {type(e).__name__}")
+        app.logger.error(f"Error message: {str(e)}")
+        import traceback
+        app.logger.error(f"Full traceback:\n{traceback.format_exc()}")
+        app.logger.error("=" * 70)
+        
+        # Re-raise to let Flask error handler deal with it
+        raise
 
 
 @app.route('/recipe/<int:recipe_id>')
@@ -1335,14 +1506,56 @@ def _recipe_to_dict(recipe):
 @app.errorhandler(404)
 def page_not_found(e):
     """Handle 404 errors."""
+    app.logger.warning(f"404 Not Found: {request.url}")
     return render_template('404.html'), 404
 
 
 @app.errorhandler(500)
 def internal_error(e):
     """Handle 500 errors."""
-    app.logger.error(f"Internal server error: {str(e)}")
+    import traceback
+    import sys
+    
+    app.logger.error("=" * 70)
+    app.logger.error("INTERNAL SERVER ERROR (500)")
+    app.logger.error("=" * 70)
+    app.logger.error(f"Error type: {type(e).__name__}")
+    app.logger.error(f"Error message: {str(e)}")
+    app.logger.error(f"Request URL: {request.url}")
+    app.logger.error(f"Request method: {request.method}")
+    app.logger.error(f"Request args: {dict(request.args)}")
+    app.logger.error(f"Request form: {dict(request.form)}")
+    
+    # Get the exception info
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    if exc_traceback:
+        app.logger.error("Full traceback:")
+        app.logger.error("".join(traceback.format_exception(exc_type, exc_value, exc_traceback)))
+    else:
+        app.logger.error("Traceback (from exception object):")
+        app.logger.error(traceback.format_exc())
+    
+    app.logger.error("=" * 70)
+    
     return render_template('500.html'), 500
+
+
+# Add a before_request handler to log all requests
+@app.before_request
+def log_request_info():
+    """Log request information for debugging."""
+    try:
+        app.logger.debug(f"Request: {request.method} {request.url}")
+        app.logger.debug(f"Remote address: {request.remote_addr}")
+        try:
+            if hasattr(current_user, 'is_authenticated') and current_user.is_authenticated:
+                app.logger.debug(f"Authenticated user: {current_user.username} (ID: {current_user.id})")
+            else:
+                app.logger.debug("Anonymous user")
+        except Exception:
+            app.logger.debug("Could not determine user status")
+    except Exception as e:
+        app.logger.warning(f"Error in log_request_info: {e}")
 
 
 # ============================================================================
@@ -1350,7 +1563,36 @@ def internal_error(e):
 # ============================================================================
 
 if __name__ == '__main__':
-    app.logger.info(f"Starting Recipe Editor (MySQL) on {config.HOST}:{config.PORT}")
-    app.logger.info(f"Debug mode: {config.DEBUG}")
-    app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG)
+    try:
+        logger.debug("=" * 70)
+        logger.debug("Starting Flask development server...")
+        logger.debug("=" * 70)
+        app.logger.info(f"Starting Recipe Editor (MySQL) on {config.HOST}:{config.PORT}")
+        app.logger.info(f"Debug mode: {config.DEBUG}")
+        app.logger.debug(f"Database: {config.MYSQL_DATABASE} on {config.MYSQL_HOST}:{config.MYSQL_PORT}")
+        app.logger.debug(f"Log file: {config.LOG_FILE}")
+        
+        # Final connection test before starting
+        with app.app_context():
+            try:
+                from db_config import test_connection
+                success, msg = test_connection()
+                if success:
+                    app.logger.debug(f"Pre-startup database check: {msg}")
+                else:
+                    app.logger.error(f"Pre-startup database check failed: {msg}")
+                    app.logger.error("Application will start but database operations may fail")
+            except Exception as e:
+                app.logger.warning(f"Could not perform pre-startup database check: {e}")
+        
+        app.logger.info("=" * 70)
+        app.logger.info("Application startup complete - ready to accept requests")
+        app.logger.info("=" * 70)
+        
+        app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG)
+    except KeyboardInterrupt:
+        logger.info("Application stopped by user")
+    except Exception as e:
+        logger.error(f"Fatal error starting application: {e}", exc_info=True)
+        sys.exit(1)
 
