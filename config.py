@@ -7,7 +7,7 @@ import os
 SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 HOST = os.environ.get('HOST', '0.0.0.0')
-PORT = int(os.environ.get('PORT', '6666'))
+PORT = int(os.environ.get('PORT', '8666'))
 
 # Base Directories
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
