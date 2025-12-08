@@ -489,63 +489,24 @@
                     
                     <!-- Tags -->
                     <div class="mb-3">
-                        <label class="form-label">
+                        <label class="form-label" for="tags">
                             Tags
                             <i class="bi bi-question-circle text-muted ms-1" 
                                data-bs-toggle="tooltip" 
                                data-bs-placement="top" 
-                               title="Add tags to help categorize your recipe. You can type comma-separated tags or select from existing ones below."></i>
+                               title="Enter tags separated by commas or spaces. Tags are automatically converted to lowercase."></i>
                         </label>
-                        
-                        {% if all_tags %}
-                            <div class="mb-2">
-                                <small class="text-muted">Select from your tags (System tags and Personal tags):</small>
-                                <div class="row mt-2 g-2">
-                                    {% for tag_name, tag in all_tags.items()|sort %}
-                                        <div class="col-md-4 col-sm-6">
-                                            <div class="form-check">
-                                                <input class="form-check-input" 
-                                                       type="checkbox" 
-                                                       name="tag_{{ tag_name }}" 
-                                                       id="tag_{{ tag_name }}"
-                                                       {% if recipe and recipe.tags and tag_name in recipe.tags|map(attribute='name') %}checked{% endif %}>
-                                                <label class="form-check-label" for="tag_{{ tag_name }}">
-                                                    {{ tag_name }}
-                                                    {% if tag.scope == 'system' %}
-                                                        <i class="bi bi-star-fill text-primary" title="System tag (available to all users)"></i>
-                                                    {% else %}
-                                                        <i class="bi bi-person-fill text-info" title="Personal tag (only you can use)"></i>
-                                                    {% endif %}
-                                                </label>
-                                            </div>
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        {% else %}
-                            <div class="mb-2">
-                                <small class="text-muted">No existing tags found. Create some personal tags by entering them below.</small>
-                            </div>
-                        {% endif %}
-                        
-                        <div>
-                            <label for="tags" class="form-label">
-                                <small class="text-muted">Or enter new tags (comma-separated):</small>
-                            </label>
-                            <input type="text" 
-                                   class="form-control mt-1" 
-                                   name="tags" 
-                                   id="tags"
-                                   placeholder="e.g., dessert, chocolate, quick"
-                                   value="{% if recipe and new_tags %}{{ new_tags|join(', ') }}{% endif %}"
-                                   autocomplete="off">
-                        </div>
+                        <input type="text" 
+                               class="form-control" 
+                               name="tags" 
+                               id="tags"
+                               placeholder="e.g., dessert, chocolate, quick or dessert chocolate quick"
+                               value="{% if recipe and recipe.tags %}{{ recipe.tags|map(attribute='name')|join(', ') }}{% elif recipe and new_tags %}{{ new_tags|join(', ') }}{% endif %}"
+                               autocomplete="off">
                         <div class="form-text">
                             <i class="bi bi-info-circle"></i> 
-                            Tags are case-insensitive and help organize your recipes. 
+                            Enter tags separated by commas or spaces. Tags are case-insensitive and will be converted to lowercase. 
                             New tags you create will be personal tags (only visible to you).
-                            <i class="bi bi-star-fill text-primary"></i> = System tag (all users) | 
-                            <i class="bi bi-person-fill text-info"></i> = Personal tag (only you)
                         </div>
                     </div>
                 </div>
@@ -1071,6 +1032,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     };
+    
+    // Tag input normalization - convert to lowercase as user types
+    const tagInput = document.getElementById('tags');
+    if (tagInput) {
+        tagInput.addEventListener('input', function(e) {
+            const cursorPos = this.selectionStart;
+            const value = this.value;
+            const normalized = value.toLowerCase();
+            
+            if (value !== normalized) {
+                this.value = normalized;
+                // Restore cursor position
+                this.setSelectionRange(cursorPos, cursorPos);
+            }
+        });
+    }
 });
 {% endif %}
 

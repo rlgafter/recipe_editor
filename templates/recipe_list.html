@@ -24,31 +24,31 @@
                                 <input class="form-check-input" type="radio" name="match_all" value="false" 
                                        id="matchAny" {% if not match_all %}checked{% endif %}>
                                 <label class="form-check-label" for="matchAny">
-                                    Any selected tag
+                                    Match any tag
                                 </label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="match_all" value="true" 
                                        id="matchAll" {% if match_all %}checked{% endif %}>
                                 <label class="form-check-label" for="matchAll">
-                                    All selected tags
+                                    Match all tags
                                 </label>
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label class="form-label">Tags:</label>
-                            {% for tag_name, tag in all_tags.items()|sort %}
-                                <div class="form-check">
-                                    <input class="form-check-input tag-checkbox" type="checkbox" 
-                                           name="tags" value="{{ tag_name }}" 
-                                           id="tag_{{ tag_name }}"
-                                           {% if tag_name in selected_tags %}checked{% endif %}>
-                                    <label class="form-check-label" for="tag_{{ tag_name }}">
-                                        {{ tag_name }} ({{ tag.count }})
-                                    </label>
-                                </div>
-                            {% endfor %}
+                        <div class="mb-3 position-relative">
+                            <label class="form-label" for="tagFilterInput">Tags:</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="tags" 
+                                   id="tagFilterInput"
+                                   placeholder="e.g., dessert, chocolate or dessert chocolate"
+                                   value="{% if selected_tags %}{{ selected_tags|join(', ') }}{% endif %}"
+                                   autocomplete="off">
+                            <div class="form-text">
+                                <small>Enter tags separated by commas or spaces. Tags are case-insensitive.</small>
+                            </div>
+                            <div id="tagAutocomplete" class="list-group position-absolute w-100" style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto; margin-top: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);"></div>
                         </div>
                         
                         <button type="submit" class="btn btn-primary btn-sm w-100 mb-2">
@@ -229,16 +229,139 @@
 
 {% block extra_scripts %}
 <script>
-    // Auto-submit form when radio buttons change
-    document.querySelectorAll('input[name="match_all"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            // Only auto-submit if some tags are selected
-            const checkedTags = document.querySelectorAll('.tag-checkbox:checked');
-            if (checkedTags.length > 0) {
-                document.getElementById('filterForm').submit();
+    // Tag autocomplete data
+    const allTags = {{ all_tags|tojson if all_tags else '{}' }};
+    const tagNames = Object.keys(allTags).sort();
+    
+    // Tag autocomplete functionality
+    (function() {
+        const tagInput = document.getElementById('tagFilterInput');
+        const autocompleteDiv = document.getElementById('tagAutocomplete');
+        
+        if (!tagInput || !autocompleteDiv) return;
+        
+        let currentFocus = -1;
+        
+        // Normalize tag input to lowercase
+        tagInput.addEventListener('input', function(e) {
+            const cursorPos = this.selectionStart;
+            const value = this.value;
+            const normalized = value.toLowerCase();
+            
+            if (value !== normalized) {
+                this.value = normalized;
+                // Restore cursor position
+                this.setSelectionRange(cursorPos, cursorPos);
+            }
+            
+            showAutocomplete(this.value);
+        });
+        
+        // Show autocomplete suggestions
+        function showAutocomplete(inputValue) {
+            // Get the current word being typed (last tag in the input)
+            const parts = inputValue.split(/[,\s]+/);
+            const currentWord = parts[parts.length - 1].toLowerCase().trim();
+            
+            // Clear previous suggestions
+            autocompleteDiv.innerHTML = '';
+            autocompleteDiv.style.display = 'none';
+            currentFocus = -1;
+            
+            if (!currentWord) {
+                return;
+            }
+            
+            // Filter tags that start with current word
+            const matches = tagNames.filter(tag => 
+                tag.toLowerCase().startsWith(currentWord) && 
+                !inputValue.toLowerCase().includes(tag.toLowerCase() + ',') &&
+                !inputValue.toLowerCase().includes(tag.toLowerCase() + ' ')
+            ).slice(0, 10); // Limit to 10 suggestions
+            
+            if (matches.length === 0) {
+                return;
+            }
+            
+            // Create suggestion list
+            matches.forEach((tag, index) => {
+                const item = document.createElement('a');
+                item.className = 'list-group-item list-group-item-action';
+                item.href = '#';
+                item.textContent = tag + ' (' + (allTags[tag].count || 0) + ')';
+                item.dataset.tag = tag;
+                
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    insertTag(tag);
+                });
+                
+                autocompleteDiv.appendChild(item);
+            });
+            
+            autocompleteDiv.style.display = 'block';
+        }
+        
+        // Insert tag into input
+        function insertTag(tag) {
+            const value = tagInput.value;
+            const parts = value.split(/[,\s]+/);
+            // Insert tag in lowercase to match normalization
+            const tagLower = tag.toLowerCase();
+            parts[parts.length - 1] = tagLower; // Replace current word with selected tag (lowercase)
+            
+            // Reconstruct with comma separator
+            const existingTags = parts.slice(0, -1).filter(p => p.trim());
+            const newValue = existingTags.length > 0 
+                ? existingTags.join(', ') + ', ' + tagLower
+                : tagLower;
+            
+            tagInput.value = newValue;
+            autocompleteDiv.style.display = 'none';
+            tagInput.focus();
+        }
+        
+        // Handle keyboard navigation
+        tagInput.addEventListener('keydown', function(e) {
+            const items = autocompleteDiv.querySelectorAll('.list-group-item');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentFocus++;
+                if (currentFocus >= items.length) currentFocus = 0;
+                setActive(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentFocus--;
+                if (currentFocus < 0) currentFocus = items.length - 1;
+                setActive(items);
+            } else if (e.key === 'Enter' && currentFocus >= 0) {
+                e.preventDefault();
+                if (items[currentFocus]) {
+                    items[currentFocus].click();
+                }
+            } else if (e.key === 'Escape') {
+                autocompleteDiv.style.display = 'none';
+                currentFocus = -1;
             }
         });
-    });
+        
+        function setActive(items) {
+            items.forEach(item => item.classList.remove('active'));
+            if (items[currentFocus]) {
+                items[currentFocus].classList.add('active');
+                items[currentFocus].scrollIntoView({ block: 'nearest' });
+            }
+        }
+        
+        // Hide autocomplete when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!tagInput.contains(e.target) && !autocompleteDiv.contains(e.target)) {
+                autocompleteDiv.style.display = 'none';
+                currentFocus = -1;
+            }
+        });
+    })();
     
     // Handle delete form submissions with loading state
     document.querySelectorAll('.delete-form').forEach(form => {

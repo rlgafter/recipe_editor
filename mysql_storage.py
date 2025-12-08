@@ -222,7 +222,7 @@ class MySQLStorage:
         personal_tag_names = []
         
         for tag_name in recipe_data.get('tags', []):
-            tag_name = tag_name.upper().strip()
+            tag_name = tag_name.lower().strip()  # Normalize to lowercase
             tag = self.get_or_create_tag(tag_name, user_id, 'personal')
             
             # If converting to public and tag is personal, save name for notes
@@ -422,20 +422,20 @@ class MySQLStorage:
         Returns:
             Tag object
         """
-        name = name.upper().strip()
-        slug = name.lower().replace(' ', '-')
+        name = name.lower().strip()  # Normalize to lowercase
+        slug = name.replace(' ', '-')
         
-        # Look for existing tag
+        # Look for existing tag (case-insensitive match for backward compatibility)
         if tag_scope == 'system':
-            # System tags: match by name and scope only
+            # System tags: match by name and scope only (case-insensitive)
             tag = self.db.query(Tag).filter(
-                Tag.name == name,
+                func.lower(Tag.name) == name,
                 Tag.tag_scope == 'system'
             ).first()
         else:
-            # Personal tags: match by name, user_id, and scope
+            # Personal tags: match by name, user_id, and scope (case-insensitive)
             tag = self.db.query(Tag).filter(
-                Tag.name == name,
+                func.lower(Tag.name) == name,
                 Tag.user_id == user_id,
                 Tag.tag_scope == 'personal'
             ).first()
@@ -472,10 +472,13 @@ class MySQLStorage:
         if not tag_names:
             return self.get_all_recipes(user_id)
         
-        # Get tag IDs - look for system tags + user's personal tags
+        # Normalize tag names to lowercase for case-insensitive matching
+        normalized_tag_names = [name.lower().strip() for name in tag_names]
+        
+        # Get tag IDs - look for system tags + user's personal tags (case-insensitive)
         if user_id:
             tags = self.db.query(Tag).filter(
-                Tag.name.in_(tag_names),
+                func.lower(Tag.name).in_(normalized_tag_names),
                 or_(
                     Tag.tag_scope == 'system',
                     and_(Tag.tag_scope == 'personal', Tag.user_id == user_id)
@@ -484,7 +487,7 @@ class MySQLStorage:
         else:
             # Unauthenticated users can only see system tags
             tags = self.db.query(Tag).filter(
-                Tag.name.in_(tag_names),
+                func.lower(Tag.name).in_(normalized_tag_names),
                 Tag.tag_scope == 'system'
             ).all()
         
@@ -558,10 +561,13 @@ class MySQLStorage:
         
         # Apply tag filter if specified
         if tag_names:
-            # Get tags considering user_id (system + user's personal tags)
+            # Normalize tag names to lowercase for case-insensitive matching
+            normalized_tag_names = [name.lower().strip() for name in tag_names]
+            
+            # Get tags considering user_id (system + user's personal tags) (case-insensitive)
             if user_id:
                 tags = self.db.query(Tag).filter(
-                    Tag.name.in_(tag_names),
+                    func.lower(Tag.name).in_(normalized_tag_names),
                     or_(
                         Tag.tag_scope == 'system',
                         and_(Tag.tag_scope == 'personal', Tag.user_id == user_id)
@@ -569,7 +575,7 @@ class MySQLStorage:
                 ).all()
             else:
                 tags = self.db.query(Tag).filter(
-                    Tag.name.in_(tag_names),
+                    func.lower(Tag.name).in_(normalized_tag_names),
                     Tag.tag_scope == 'system'
                 ).all()
             

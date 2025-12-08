@@ -546,8 +546,21 @@ def recipe_list():
         
         # Get filter parameters
         search_term = request.args.get('search', '').strip()
-        selected_tags = request.args.getlist('tags')
+        tag_input = request.args.get('tags', '').strip()
         match_all = request.args.get('match_all') == 'true'
+        
+        # Parse tags from text input - support both comma and space delimiters, normalize to lowercase
+        selected_tags = []
+        if tag_input:
+            # Split by comma first, then by space for each part
+            parts = tag_input.split(',')
+            for part in parts:
+                # Split each comma-separated part by spaces
+                space_separated = part.strip().split()
+                for tag in space_separated:
+                    tag = tag.strip().lower()  # Normalize to lowercase
+                    if tag and tag not in selected_tags:
+                        selected_tags.append(tag)
         
         app.logger.debug(f"Request parameters - search_term: '{search_term}', selected_tags: {selected_tags}, match_all: {match_all}")
         
@@ -639,12 +652,17 @@ def recipe_view(recipe_id):
     
     email_configured = email_service.is_configured()
     
+    # Import layout configuration
+    from config import get_recipe_layout, is_section_enabled
+    
     return render_template(
         'recipe_view.html',
         recipe=recipe,
         submitter=submitter,
         is_favorited=is_favorited,
-        email_configured=email_configured
+        email_configured=email_configured,
+        layout_sections=get_recipe_layout(),
+        is_section_enabled=is_section_enabled
     )
 
 
@@ -1421,18 +1439,20 @@ def _parse_recipe_form(form_data):
     # Trim empty ingredients from the end of the list
     ingredients = _trim_empty_ingredients_from_end(ingredients)
     
-    # Parse tags
+    # Parse tags - support both comma and space delimiters, normalize to lowercase
     tags = []
     tag_input = form_data.get('tags', '').strip()
     if tag_input:
-        tags = [tag.strip() for tag in tag_input.split(',') if tag.strip()]
-    
-    # Check for individual tag checkboxes
-    for key in form_data:
-        if key.startswith('tag_'):
-            tag_name = key[4:]
-            if tag_name and tag_name not in tags:
-                tags.append(tag_name)
+        # Split by comma first, then by space for each part
+        # This handles: "tag1, tag2 tag3" -> ["tag1", "tag2", "tag3"]
+        parts = tag_input.split(',')
+        for part in parts:
+            # Split each comma-separated part by spaces
+            space_separated = part.strip().split()
+            for tag in space_separated:
+                tag = tag.strip().lower()  # Normalize to lowercase
+                if tag and tag not in tags:
+                    tags.append(tag)
     
     return {
         'name': name,
