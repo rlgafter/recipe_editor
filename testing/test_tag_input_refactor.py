@@ -624,3 +624,4 @@ class TestTagEdit:
             assert 'new' in tag_names
             assert 'tags' in tag_names
 
+
