@@ -951,16 +951,16 @@ This email was sent from Recipe Editor
         """
         
         # Source information
-        if recipe.source and recipe.source.get('name'):
+        if recipe.source and recipe.source.source_name:
             html += '<div class="source">'
             html += '<strong>Source:</strong> '
-            html += recipe.source['name']
-            if recipe.source.get('author'):
-                html += f" ({recipe.source['author']})"
-            if recipe.source.get('issue'):
-                html += f" - {recipe.source['issue']}"
-            if recipe.source.get('url'):
-                html += f'<br><a href="{recipe.source["url"]}">{recipe.source["url"]}</a>'
+            html += recipe.source.source_name
+            if recipe.source.author:
+                html += f" ({recipe.source.author})"
+            if recipe.source.issue:
+                html += f" - {recipe.source.issue}"
+            if recipe.source.source_url:
+                html += f'<br><a href="{recipe.source.source_url}">{recipe.source.source_url}</a>'
             html += '</div>'
         
         if custom_message:
@@ -976,7 +976,21 @@ This email was sent from Recipe Editor
             <div class="ingredients">
         """
         for ing in recipe.ingredients:
-            html += f'<div class="ingredient">• {str(ing)}</div>\n'
+            # Ingredients can be dict or RecipeIngredient objects
+            if isinstance(ing, dict):
+                # Format dict ingredient
+                parts = []
+                if ing.get('amount'):
+                    parts.append(ing['amount'])
+                if ing.get('unit'):
+                    parts.append(ing['unit'])
+                if ing.get('description'):
+                    parts.append(ing['description'])
+                ingredient_text = ' '.join(parts) if parts else str(ing)
+                html += f'<div class="ingredient">• {ingredient_text}</div>\n'
+            else:
+                # RecipeIngredient object or other format
+                html += f'<div class="ingredient">• {str(ing)}</div>\n'
         html += "</div>"
         
         # Instructions
@@ -1002,7 +1016,9 @@ This email was sent from Recipe Editor
                 <strong>Tags:</strong><br>
             """
             for tag in recipe.tags:
-                html += f'<span class="tag">{tag}</span>'
+                # Tag is a Tag object, access its name attribute
+                tag_name = tag.name if hasattr(tag, 'name') else str(tag)
+                html += f'<span class="tag">{tag_name}</span>'
             html += "</div>"
         
         html += """
@@ -1063,14 +1079,14 @@ This email was sent from Recipe Editor
         text = f"{recipe.name}\n{'=' * len(recipe.name)}\n\n"
         
         # Source information
-        if recipe.source and recipe.source.get('name'):
-            text += f"Source: {recipe.source['name']}"
-            if recipe.source.get('author'):
-                text += f" ({recipe.source['author']})"
-            if recipe.source.get('issue'):
-                text += f" - {recipe.source['issue']}"
-            if recipe.source.get('url'):
-                text += f"\n{recipe.source['url']}"
+        if recipe.source and recipe.source.source_name:
+            text += f"Source: {recipe.source.source_name}"
+            if recipe.source.author:
+                text += f" ({recipe.source.author})"
+            if recipe.source.issue:
+                text += f" - {recipe.source.issue}"
+            if recipe.source.source_url:
+                text += f"\n{recipe.source.source_url}"
             text += "\n\n"
         
         if custom_message:
@@ -1078,7 +1094,20 @@ This email was sent from Recipe Editor
         
         text += "INGREDIENTS\n-----------\n"
         for ing in recipe.ingredients:
-            text += f"• {str(ing)}\n"
+            # Ingredients can be dict or RecipeIngredient objects
+            if isinstance(ing, dict):
+                # Format dict ingredient
+                parts = []
+                if ing.get('amount'):
+                    parts.append(ing['amount'])
+                if ing.get('unit'):
+                    parts.append(ing['unit'])
+                if ing.get('description'):
+                    parts.append(ing['description'])
+                text += f"• {' '.join(parts)}\n"
+            else:
+                # RecipeIngredient object or other format
+                text += f"• {str(ing)}\n"
         
         if recipe.instructions:
             text += f"\nINSTRUCTIONS\n------------\n{recipe.instructions}\n"
@@ -1087,7 +1116,9 @@ This email was sent from Recipe Editor
             text += f"\nNOTES\n-----\n{recipe.notes}\n"
         
         if recipe.tags:
-            text += f"\nTags: {', '.join(recipe.tags)}\n"
+            # Tags are Tag objects, extract names
+            tag_names = [tag.name if hasattr(tag, 'name') else str(tag) for tag in recipe.tags]
+            text += f"\nTags: {', '.join(tag_names)}\n"
         
         text += "\n---\nSent from Recipe Editor\n"
         
