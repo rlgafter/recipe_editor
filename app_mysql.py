@@ -1035,6 +1035,10 @@ def import_recipe_from_url():
             # Apply source validation and correction
             gemini_service._validate_and_correct_source(recipe_data)
             
+            # Remove tags from imported data (no auto-population)
+            if 'tags' in recipe_data:
+                recipe_data['tags'] = []
+            
             # For URL imports, the source URL is already set
             source = recipe_data.get('source', {})
             if not source.get('name'):
@@ -1084,6 +1088,10 @@ def import_recipe_from_file():
         if success and recipe_data:
             # Apply source validation and correction
             gemini_service._validate_and_correct_source(recipe_data)
+            
+            # Remove tags from imported data (no auto-population)
+            if 'tags' in recipe_data:
+                recipe_data['tags'] = []
             
             # Check if this is an adapted recipe that needs source input
             source = recipe_data.get('source', {})

@@ -510,14 +510,13 @@ Important guidelines:
 4. If instructions are NOT numbered, format them with numbered steps (1., 2., 3., etc.) OR separate each step with blank lines
 5. Each instruction step should be clear and distinct
 6. Extract any notes, tips, or additional information into the "notes" field
-7. Infer appropriate tags (e.g., "DESSERT", "VEGETARIAN", "QUICK", "ITALIAN")
+7. Do NOT infer or populate tags - leave the tags field as an empty array []
 8. For source.name: extract the cookbook title, blog name, or publication name
 9. For source.author: extract the recipe author(s) or cookbook author(s)
 10. For source.issue: extract publisher and publication year (e.g., "Ten Speed Press, 2017") or magazine issue/edition
 11. For source.original_source: ONLY populate if this is an adapted recipe (look for words like "adapted by", "from", "based on", "inspired by")
 12. If source name cannot be determined, leave it as empty string "" (it will be auto-filled with the URL)
-13. Make all tags uppercase
-14. For prep_time and cook_time: extract as INTEGER minutes (e.g., 15, 30, 90). If not specified, use null.
+13. For prep_time and cook_time: extract as INTEGER minutes (e.g., 15, 30, 90). If not specified, use null.
 15. For servings: extract as STRING (e.g., "4", "6-8", "makes 12 cookies", "serves 4-6"). If not specified, use empty string "".
 16. If only "total time" is given (not separated into prep and cook), put the total in cook_time and leave prep_time as null
 17. Return ONLY the JSON object, no additional text or explanation
