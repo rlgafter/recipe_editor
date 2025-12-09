@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update admin user email and password."""
+"""Clear pending email change fields for admin user."""
 import sys
 import os
 
@@ -25,10 +25,9 @@ except Exception as e:
 import config
 from flask import Flask
 from db_models import db, User
-from auth import hash_password, is_valid_email
 
-def update_admin_user():
-    """Update admin user email and password."""
+def clear_admin_pending_email():
+    """Clear pending email change fields for admin user."""
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = config.SQLALCHEMY_DATABASE_URI
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -43,42 +42,36 @@ def update_admin_user():
                 print("✗ Admin user not found!")
                 return False
             
-            # Update email
-            new_email = 'rlgafter@gmail.com'
-            old_email = admin_user.email
+            print(f"Current admin user email: {admin_user.email}")
+            print(f"Pending email: {admin_user.pending_email}")
+            print(f"Email change token: {admin_user.email_change_token}")
+            print(f"Email change expires: {admin_user.email_change_expires}")
             
-            # Validate email format
-            if not is_valid_email(new_email):
-                print(f"✗ Invalid email format: {new_email}")
-                return False
-            
-            admin_user.email = new_email
-            
-            # Update password
-            new_password = 'trouble'
-            admin_user.password_hash = hash_password(new_password)
+            # Clear pending email change fields
+            admin_user.pending_email = None
+            admin_user.email_change_token = None
+            admin_user.email_change_expires = None
             
             # Commit changes
             db.session.commit()
             
-            print("✓ Admin user updated successfully!")
-            print(f"\nUpdated Details:")
-            print(f"  Username: {admin_user.username}")
-            print(f"  Email: {old_email} → {new_email}")
-            print(f"  Password: {new_password}")
-            print(f"  Is Admin: {admin_user.is_admin}")
-            print(f"  Can Publish Public: {admin_user.can_publish_public}")
+            print("\n✓ Cleared pending email change fields for admin user!")
+            print(f"  Email: {admin_user.email}")
+            print(f"  Pending email: None")
+            print(f"  Email change token: None")
+            print(f"  Email change expires: None")
             
             return True
                 
         except Exception as e:
             db.session.rollback()
-            print(f"✗ Error updating admin user: {e}")
+            print(f"✗ Error clearing pending email fields: {e}")
             import traceback
             traceback.print_exc()
             return False
 
 if __name__ == '__main__':
-    success = update_admin_user()
+    success = clear_admin_pending_email()
     sys.exit(0 if success else 1)
+
 

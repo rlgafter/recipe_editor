@@ -276,9 +276,19 @@ class MySQLStorage:
         # Update tags
         recipe.tags.clear()
         personal_tag_names = []
+        seen_tags = set()  # Track tags already added to avoid duplicates
         
         for tag_name in recipe_data.get('tags', []):
             tag_name = tag_name.lower().strip()  # Normalize to lowercase
+            
+            # Skip empty tags after stripping
+            if not tag_name:
+                continue
+            
+            # Skip if we've already added this tag (handle duplicates)
+            if tag_name in seen_tags:
+                continue
+            
             tag = self.get_or_create_tag(tag_name, user_id, 'personal')
             
             # If converting to public and tag is personal, save name for notes
@@ -286,6 +296,7 @@ class MySQLStorage:
                 personal_tag_names.append(tag.name)
             else:
                 recipe.tags.append(tag)
+                seen_tags.add(tag_name)
         
         # If converting to public and there are personal tags, add to notes
         if converting_to_public and personal_tag_names:

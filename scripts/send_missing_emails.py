@@ -101,7 +101,7 @@ def send_share_notification_emails(dry_run=True):
     
     if not email_service.is_configured():
         logger.error("Email service is not configured. Cannot send emails.")
-        return 0, 0
+        return 0, 0, 0
     
     # Find pending shares where recipient is not a user
     pending_shares = db.session.query(PendingRecipeShare).filter(
