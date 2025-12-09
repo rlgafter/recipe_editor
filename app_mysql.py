@@ -1187,11 +1187,9 @@ def recipe_email(recipe_id):
         return render_template('recipe_email.html', recipe=recipe), 400
     
     try:
-        # Convert recipe to dict for email service (which expects old format)
-        recipe_dict = _recipe_to_dict(recipe)
-        
+        # Pass Recipe object directly to email service
         success, error_msg = email_service.send_recipe(
-            recipe_dict,
+            recipe,
             recipient_email,
             recipient_name,
             custom_message
