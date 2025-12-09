@@ -1,0 +1,86 @@
+{% extends "base_mysql.html" %}
+
+{% block title %}Select Recipes to Share - Recipe Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-header header-dark">
+                <h3 class="mb-0"><i class="bi bi-share"></i> Select Recipes to Share</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    <strong>Select all recipes that you wish to share.</strong> You can only share public recipes. 
+                    After selecting recipes, you'll be able to enter email addresses to share with.
+                </p>
+                
+                {% if not recipes %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> You don't have any public recipes to share.
+                    <a href="{{ url_for('recipe_new') }}" class="alert-link">Create a new recipe</a> and make it public to share it.
+                </div>
+                {% else %}
+                <form method="POST" action="{{ url_for('recipes_share_select') }}">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleAllRecipes(this)">
+                            <label class="form-check-label" for="selectAll">
+                                <strong>Select All</strong>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="list-group">
+                        {% for recipe in recipes %}
+                        <div class="list-group-item">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="recipe_ids" 
+                                       value="{{ recipe.id }}" id="recipe_{{ recipe.id }}">
+                                <label class="form-check-label w-100" for="recipe_{{ recipe.id }}">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h5 class="mb-1">{{ recipe.name }}</h5>
+                                            {% if recipe.description %}
+                                            <p class="text-muted mb-1 small">{{ recipe.description[:150] }}{% if recipe.description|length > 150 %}...{% endif %}</p>
+                                            {% endif %}
+                                            <small class="text-muted">
+                                                <i class="bi bi-calendar"></i> {{ recipe.created_at.strftime('%Y-%m-%d') }}
+                                            </small>
+                                        </div>
+                                        <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}" 
+                                           class="btn btn-sm btn-outline-primary" 
+                                           onclick="event.stopPropagation();">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mt-4 d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('recipe_list') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-arrow-right"></i> Share Selected Recipes
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAllRecipes(checkbox) {
+    const checkboxes = document.querySelectorAll('input[name="recipe_ids"]');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+}
+</script>
+{% endblock %}
+
+

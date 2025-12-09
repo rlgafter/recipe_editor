@@ -13,31 +13,37 @@ class TestRecipeVisibility:
     """Test recipe visibility based on user authentication and ownership."""
     
     def test_unauthenticated_user_can_only_see_public_recipes(self, client, test_recipes):
-        """Test that unauthenticated users can only see public recipes."""
-        response = client.get('/')
+        """Test that unauthenticated users are redirected to home page and cannot see recipes."""
+        # Unauthenticated users should be redirected to home page
+        response = client.get('/recipes')
         
-        assert response.status_code == 200
+        # Should redirect to login or home page
+        assert response.status_code in [302, 200]
         
-        # Should only show public recipes
+        # If redirected, follow redirect
+        if response.status_code == 302:
+            response = client.get('/')
+        
+        # Should show home page, not recipes
         response_text = response.data.decode('utf-8').lower()
+        assert 'home page' in response_text or 'login' in response_text
         
-        # Public recipe should be visible
-        assert 'public test recipe' in response_text
-        
-        # Private and incomplete recipes should not be visible
-        assert 'private test recipe' not in response_text
-        assert 'incomplete test recipe' not in response_text
+        # Should not show any recipes
+        if test_recipes:
+            assert 'public test recipe' not in response_text
+            assert 'private test recipe' not in response_text
+            assert 'incomplete test recipe' not in response_text
     
-    def test_authenticated_user_can_see_own_and_public_recipes(self, auth_client, test_recipes):
-        """Test that authenticated users can see their own recipes and public recipes."""
+    def test_authenticated_user_can_see_own_recipes(self, auth_client, test_recipes):
+        """Test that authenticated users can see their own recipes (public recipes not automatically visible)."""
         auth_client['login']('testuser', 'password123')
         
-        response = auth_client['client'].get('/')
+        response = auth_client['client'].get('/recipes')
         assert response.status_code == 200
         
         response_text = response.data.decode('utf-8').lower()
         
-        # Should see public recipe
+        # Should see their own public recipe (own recipes are always visible)
         assert 'public test recipe' in response_text
         
         # Should see their own private recipe
@@ -83,7 +89,7 @@ class TestRecipeVisibility:
             
         auth_client['login']('admin', 'admin123')
         
-        response = auth_client['client'].get('/')
+        response = auth_client['client'].get('/recipes')
         assert response.status_code == 200
         
         # For now, just verify that admin can access the page
@@ -103,15 +109,15 @@ class TestRecipeAccess:
         assert response.status_code in [403, 404, 302]
     
     def test_unauthenticated_user_can_access_public_recipe(self, client, test_recipes):
-        """Test that unauthenticated users can access public recipes."""
+        """Test that unauthenticated users cannot access recipes (redirected to home)."""
         if not test_recipes:
             pytest.skip("No test recipes available")
             
         public_recipe = test_recipes[0]  # First recipe is public
         response = client.get(f'/recipe/{public_recipe["id"]}')
         
-        # Should be accessible
-        assert response.status_code == 200
+        # Should redirect to login or home page (302 redirect)
+        assert response.status_code == 302
     
     def test_owner_can_access_own_private_recipe(self, auth_client, test_recipes):
         """Test that recipe owners can access their own private recipes."""
@@ -219,19 +225,19 @@ class TestRecipeListFiltering:
     
     def test_recipe_list_shows_appropriate_recipes(self, auth_client):
         """Test that main recipe list shows appropriate recipes based on user."""
-        # Test as unauthenticated user
-        response = auth_client['client'].get('/')
-        assert response.status_code == 200
+        # Test as unauthenticated user - should redirect to home
+        response = auth_client['client'].get('/recipes')
+        assert response.status_code in [302, 200]  # Redirect or home page
         
         # Test as authenticated user
         auth_client['login']('testuser', 'password123')
-        response = auth_client['client'].get('/')
+        response = auth_client['client'].get('/recipes')
         assert response.status_code == 200
         
         # Test as admin
         auth_client['logout']()
         auth_client['login']('admin', 'admin123')
-        response = auth_client['client'].get('/')
+        response = auth_client['client'].get('/recipes')
         assert response.status_code == 200
 
 

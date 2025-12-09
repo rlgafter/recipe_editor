@@ -1,0 +1,86 @@
+{% extends "base_mysql.html" %}
+
+{% block title %}Find Friends - Recipe Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        {% if recipe %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0"><i class="bi bi-share"></i> Sharing Recipe: {{ recipe.name }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>{{ recipe.name }}</h5>
+                        {% if recipe.description %}
+                        <p class="text-muted">{{ recipe.description[:200] }}{% if recipe.description|length > 200 %}...{% endif %}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> View Full Recipe
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="card shadow-sm">
+            <div class="card-header header-dark">
+                <h3 class="mb-0"><i class="bi bi-person-plus"></i> Find Friends</h3>
+            </div>
+            <div class="card-body">
+                {% if recipe %}
+                <p class="text-muted">Enter an email address to share this recipe. If the user is already your friend, the recipe will be shared immediately. Otherwise, a friend request will be sent first.</p>
+                {% else %}
+                <p class="text-muted">Enter an email address to send a friend request. If a user with that email exists, they will be notified of your request.</p>
+                {% endif %}
+                
+                {% if show_email_form and recipe %}
+                <div class="alert alert-info">
+                    <p><strong>{{ email }}</strong> is not yet registered on our site.</p>
+                    <p>Would you like to send this recipe to them via email? They will need to create an account to view it.</p>
+                </div>
+                <form method="POST" action="{{ url_for('friends_find_send_email') }}">
+                    <input type="hidden" name="recipe_id" value="{{ recipe.id }}">
+                    <input type="hidden" name="email" value="{{ email }}">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-envelope"></i> Send Recipe via Email
+                        </button>
+                        <a href="{{ url_for('friends_find', recipe_id=recipe.id) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+                {% else %}
+                <form method="POST" action="{{ url_for('friends_find') }}">
+                    {% if recipe_id %}
+                    <input type="hidden" name="recipe_id" value="{{ recipe_id }}">
+                    {% endif %}
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               placeholder="friend@example.com" required autofocus>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> {% if recipe %}Share Recipe{% else %}Send Friend Request{% endif %}
+                        </button>
+                        <a href="{% if recipe %}{{ url_for('recipe_view', recipe_id=recipe.id) }}{% else %}{{ url_for('friends_list') }}{% endif %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back
+                        </a>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

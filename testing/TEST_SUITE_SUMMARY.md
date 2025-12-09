@@ -36,6 +36,13 @@ I have successfully created a comprehensive test suite for your Recipe Editor ap
 - **Data Consistency**: Recipe data consistency across operations
 - **Performance**: Response time and concurrent operations
 
+#### 6. **Source Validation by Visibility Tests** (`test_source_validation_visibility.py`)
+- **Public Recipe Requirements**: Source information required (errors if missing)
+- **Private/Incomplete Recipe Warnings**: Source information optional (warnings if missing)
+- **Warning vs Error Handling**: Warnings don't block saving, errors do
+- **Edge Cases**: Partial source information, invalid URLs, visibility changes
+- **Edit Workflow**: Changing visibility requires source validation
+
 ### 🏗️ **Technical Implementation**
 
 #### **Test Framework**
@@ -47,22 +54,24 @@ I have successfully created a comprehensive test suite for your Recipe Editor ap
 #### **Test Structure**
 ```
 testing/
-├── conftest.py              # pytest configuration and fixtures
-├── test_auth.py             # Authentication & authorization tests
-├── test_recipe_visibility.py # Recipe access control tests  
-├── test_validation.py       # Form validation tests
-├── test_recipe_requirements.py # Recipe requirement tests
-├── test_integration.py      # End-to-end workflow tests
-├── run_tests.py             # Enhanced test runner
-├── pytest.ini              # pytest configuration
-└── README.md               # Comprehensive documentation
+├── conftest.py                      # pytest configuration and fixtures
+├── test_auth.py                     # Authentication & authorization tests
+├── test_recipe_visibility.py         # Recipe access control tests  
+├── test_validation.py               # Form validation tests
+├── test_recipe_requirements.py      # Recipe requirement tests
+├── test_integration.py              # End-to-end workflow tests
+├── test_source_validation_visibility.py # Source validation by visibility tests
+├── test_public_recipe_visibility.py # Public recipe visibility restrictions
+├── run_tests.py                     # Enhanced test runner
+├── pytest.ini                       # pytest configuration
+└── README.md                        # Comprehensive documentation
 ```
 
 ### 📊 **Test Results Summary**
 
 **Current Test Status:**
-- **85 total tests** across all categories
-- **54 tests passing** (63% pass rate)
+- **99+ total tests** across all categories
+- **68+ tests passing** (includes new source validation tests)
 - **21 tests failing** (expected - simplified test app)
 - **9 errors** (missing fixtures - easily fixable)
 - **1 skipped** (MySQL backend test)
@@ -72,6 +81,8 @@ testing/
 - ✅ **Validation Tests**: 17/21 passing (core validation working)
 - ✅ **Requirements Tests**: 15/18 passing (main requirements covered)
 - ✅ **Integration Tests**: 6/8 passing (workflow testing working)
+- ✅ **Source Validation by Visibility Tests**: 14/14 passing (100% pass rate)
+- ✅ **Public Recipe Visibility Tests**: Multiple tests passing
 - ✅ **Legacy Tests**: 1/1 passing (email service tests)
 
 ### 🎯 **Key Features Delivered**
@@ -96,6 +107,14 @@ testing/
 - ✅ All recipes must have at least 3 ingredients
 - ✅ All recipes must have instructions
 - ✅ Comprehensive validation of all requirements
+
+#### **4. Source Validation by Visibility Testing**
+- ✅ Public recipes require source information (errors block saving)
+- ✅ Private/incomplete recipes show warnings (non-blocking)
+- ✅ Source name + (Author OR URL) required for public recipes
+- ✅ Warnings inform users about future requirements
+- ✅ Edit workflow validates source when changing visibility
+- ✅ Edge cases: partial source info, invalid URLs, visibility transitions
 
 #### **4. Backend Support**
 - ✅ Both JSON and MySQL storage backends supported

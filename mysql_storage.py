@@ -65,16 +65,43 @@ class MySQLStorage:
         if user.is_admin:
             return recipe
         
-        # Public recipes are visible to all authenticated users
-        if recipe.visibility == 'public':
-            return recipe
+        # Users can see their own recipes (if not soft-deleted)
+        if recipe.user_id == user_id:
+            return recipe if recipe.deleted_at is None else None
         
-        # Users can see their own recipes
-        return recipe if recipe.user_id == user_id else None
+        # Check if recipe is shared with user (public recipes must be explicitly shared)
+        from db_models import RecipeShare, Friendship
+        # First check if there's a share
+        share = self.db.query(RecipeShare).filter(
+            RecipeShare.recipe_id == recipe_id,
+            RecipeShare.shared_with_user_id == user_id
+        ).first()
+        
+        # If share exists, verify friendship still exists
+        if share:
+            friendship = self.db.query(Friendship).filter(
+                or_(
+                    ((Friendship.user1_id == share.shared_by_user_id) & (Friendship.user2_id == user_id)),
+                    ((Friendship.user1_id == user_id) & (Friendship.user2_id == share.shared_by_user_id))
+                )
+            ).first()
+            
+            if friendship and recipe.visibility == 'public':
+                return recipe  # Shared recipe is visible even if soft-deleted by owner
+        
+        if share:
+            return recipe  # Shared recipe is visible even if soft-deleted by owner
+        
+        # Users can see their own recipes (if not soft-deleted)
+        if recipe.user_id == user_id:
+            return recipe if recipe.deleted_at is None else None
+        
+        return None
     
     def get_all_recipes(self, user_id: Optional[int] = None) -> List[Recipe]:
         """
-        Get all accessible recipes for a user.
+        Get all accessible recipes for a user (own recipes and shared recipes only).
+        Public recipes are NOT automatically visible - they must be explicitly shared.
         
         Args:
             user_id: Current user ID (None for unauthenticated)
@@ -82,21 +109,50 @@ class MySQLStorage:
         Returns:
             List of Recipe objects
         """
-        if user_id:
-            # Authenticated: show user's recipes + public recipes
-            recipes = self.db.query(Recipe).filter(
-                or_(
-                    Recipe.user_id == user_id,
-                    Recipe.visibility == 'public'
-                )
-            ).order_by(Recipe.updated_at.desc()).all()
-        else:
-            # Unauthenticated: only public recipes
-            recipes = self.db.query(Recipe).filter(
-                Recipe.visibility == 'public'
-            ).order_by(Recipe.updated_at.desc()).all()
+        from db_models import RecipeShare, Friendship
         
-        return recipes
+        if user_id:
+            # Authenticated: show user's own recipes + recipes shared with them
+            # Get recipes shared with user
+            shared_recipe_ids = self.db.query(RecipeShare.recipe_id).join(
+                Friendship,
+                or_(
+                    ((Friendship.user1_id == RecipeShare.shared_by_user_id) & (Friendship.user2_id == user_id)),
+                    ((Friendship.user1_id == user_id) & (Friendship.user2_id == RecipeShare.shared_by_user_id))
+                )
+            ).filter(
+                RecipeShare.shared_with_user_id == user_id
+            ).distinct()
+            
+            # Build main query - only own recipes and shared recipes
+            query = self.db.query(Recipe).filter(
+                or_(
+                    # User's own recipes (excluding soft-deleted ones)
+                    and_(
+                        Recipe.user_id == user_id,
+                        Recipe.deleted_at.is_(None)
+                    ),
+                    # Recipes shared with user (including soft-deleted ones if shared)
+                    and_(
+                        Recipe.id.in_(shared_recipe_ids),
+                        Recipe.visibility == 'public'  # Only public recipes can be shared
+                    )
+                )
+            ).order_by(Recipe.updated_at.desc())
+            
+            # Execute and remove duplicates
+            all_recipes = query.all()
+            seen = set()
+            unique_recipes = []
+            for recipe in all_recipes:
+                if recipe.id not in seen:
+                    seen.add(recipe.id)
+                    unique_recipes.append(recipe)
+            
+            return unique_recipes
+        else:
+            # Unauthenticated: no recipes visible (redirected to home page)
+            return []
     
     def get_user_recipes(self, user_id: int, visibility: Optional[str] = None) -> List[Recipe]:
         """Get recipes owned by a specific user."""
@@ -248,7 +304,7 @@ class MySQLStorage:
     
     def delete_recipe(self, recipe_id: int, user_id: int) -> bool:
         """
-        Delete a recipe and cleanup orphaned tags.
+        Delete a recipe (soft delete if has shares, hard delete otherwise) and cleanup orphaned tags.
         
         Args:
             recipe_id: Recipe ID to delete
@@ -257,6 +313,9 @@ class MySQLStorage:
         Returns:
             True if deleted, False otherwise
         """
+        from db_models import RecipeShare
+        from datetime import datetime
+        
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             return False
@@ -268,23 +327,34 @@ class MySQLStorage:
         if not user.can_delete_recipe(recipe):
             return False
         
-        # Delete the recipe (cascade will remove recipe_tags associations)
-        self.db.delete(recipe)
-        self.db.commit()
+        # Check if recipe has active shares
+        has_shares = self.db.query(RecipeShare).filter(
+            RecipeShare.recipe_id == recipe_id
+        ).first() is not None
         
-        # Clean up orphaned tags (tags with no recipes)
-        orphaned_tags = self.db.query(Tag).filter(
-            ~Tag.recipes.any()
-        ).all()
-        
-        if orphaned_tags:
-            tag_names = [tag.name for tag in orphaned_tags]
-            for tag in orphaned_tags:
-                self.db.delete(tag)
+        if has_shares:
+            # Soft delete: mark as deleted but keep in database for recipients
+            recipe.deleted_at = datetime.utcnow()
             self.db.commit()
-            logger.info(f"Deleted recipe {recipe_id} and cleaned up {len(orphaned_tags)} orphaned tags: {tag_names}")
+            logger.info(f"Soft deleted recipe {recipe_id} (has active shares)")
         else:
-            logger.info(f"Deleted recipe {recipe_id}")
+            # Hard delete: actually remove from database
+            self.db.delete(recipe)
+            self.db.commit()
+            
+            # Clean up orphaned tags (tags with no recipes)
+            orphaned_tags = self.db.query(Tag).filter(
+                ~Tag.recipes.any()
+            ).all()
+            
+            if orphaned_tags:
+                tag_names = [tag.name for tag in orphaned_tags]
+                for tag in orphaned_tags:
+                    self.db.delete(tag)
+                self.db.commit()
+                logger.info(f"Deleted recipe {recipe_id} and cleaned up {len(orphaned_tags)} orphaned tags: {tag_names}")
+            else:
+                logger.info(f"Deleted recipe {recipe_id}")
         
         return True
     
@@ -506,11 +576,30 @@ class MySQLStorage:
             # Must have ANY selected tag
             query = self.db.query(Recipe).filter(Recipe.tags.any(Tag.id.in_(tag_ids)))
         
-        # Apply visibility filter
+        # Apply visibility filter - only own recipes and shared recipes
         if user_id:
-            query = query.filter(or_(Recipe.user_id == user_id, Recipe.visibility == 'public'))
+            # Get recipes shared with user
+            from db_models import RecipeShare, Friendship
+            shared_recipe_ids = self.db.query(RecipeShare.recipe_id).join(
+                Friendship,
+                or_(
+                    ((Friendship.user1_id == RecipeShare.shared_by_user_id) & (Friendship.user2_id == user_id)),
+                    ((Friendship.user1_id == user_id) & (Friendship.user2_id == RecipeShare.shared_by_user_id))
+                )
+            ).filter(
+                RecipeShare.shared_with_user_id == user_id
+            ).distinct()
+            
+            # Only show own recipes or shared recipes
+            query = query.filter(
+                or_(
+                    Recipe.user_id == user_id,
+                    Recipe.id.in_(shared_recipe_ids)
+                )
+            )
         else:
-            query = query.filter(Recipe.visibility == 'public')
+            # Unauthenticated: no recipes visible
+            return []
         
         return query.order_by(Recipe.updated_at.desc()).all()
     
@@ -590,11 +679,30 @@ class MySQLStorage:
                     # Must have ANY selected tag
                     query = query.filter(Recipe.tags.any(Tag.id.in_(tag_ids)))
         
-        # Apply visibility filter based on user permissions
+        # Apply visibility filter - only own recipes and shared recipes
         if user_id:
-            query = query.filter(or_(Recipe.user_id == user_id, Recipe.visibility == 'public'))
+            # Get recipes shared with user
+            from db_models import RecipeShare, Friendship
+            shared_recipe_ids = self.db.query(RecipeShare.recipe_id).join(
+                Friendship,
+                or_(
+                    ((Friendship.user1_id == RecipeShare.shared_by_user_id) & (Friendship.user2_id == user_id)),
+                    ((Friendship.user1_id == user_id) & (Friendship.user2_id == RecipeShare.shared_by_user_id))
+                )
+            ).filter(
+                RecipeShare.shared_with_user_id == user_id
+            ).distinct()
+            
+            # Only show own recipes or shared recipes
+            query = query.filter(
+                or_(
+                    Recipe.user_id == user_id,
+                    Recipe.id.in_(shared_recipe_ids)
+                )
+            )
         else:
-            query = query.filter(Recipe.visibility == 'public')
+            # Unauthenticated: no recipes visible
+            return []
         
         return query.order_by(Recipe.updated_at.desc()).all()
     
@@ -868,18 +976,34 @@ class MySQLStorage:
     # ========================================================================
     
     def find_recipes_by_ingredient(self, ingredient_name: str, user_id: Optional[int] = None) -> List[Recipe]:
-        """Find all recipes containing a specific ingredient."""
+        """Find all recipes containing a specific ingredient (only own and shared recipes)."""
         recipes = self.db.query(Recipe).join(RecipeIngredient).join(Ingredient).filter(
             func.lower(Ingredient.name) == ingredient_name.lower()
         )
         
-        # Apply permission filter
+        # Apply permission filter - only own recipes and shared recipes
         if user_id:
+            # Get recipes shared with user
+            from db_models import RecipeShare, Friendship
+            shared_recipe_ids = self.db.query(RecipeShare.recipe_id).join(
+                Friendship,
+                or_(
+                    ((Friendship.user1_id == RecipeShare.shared_by_user_id) & (Friendship.user2_id == user_id)),
+                    ((Friendship.user1_id == user_id) & (Friendship.user2_id == RecipeShare.shared_by_user_id))
+                )
+            ).filter(
+                RecipeShare.shared_with_user_id == user_id
+            ).distinct()
+            
             recipes = recipes.filter(
-                or_(Recipe.user_id == user_id, Recipe.visibility == 'public')
+                or_(
+                    Recipe.user_id == user_id,
+                    Recipe.id.in_(shared_recipe_ids)
+                )
             )
         else:
-            recipes = recipes.filter(Recipe.visibility == 'public')
+            # Unauthenticated: no recipes visible
+            return []
         
         return recipes.distinct().all()
     

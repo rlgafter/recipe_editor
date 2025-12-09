@@ -67,7 +67,10 @@ class User(UserMixin, db.Model):
     
     def can_edit_recipe(self, recipe):
         """Check if user can edit a specific recipe."""
-        # Admin can edit all recipes
+        # Public recipes cannot be edited by anyone
+        if recipe.visibility == 'public':
+            return False
+        # Admin can edit all non-public recipes
         if self.is_admin:
             return True
         # Users can edit their own recipes only if not public
@@ -97,9 +100,94 @@ class User(UserMixin, db.Model):
         """Check if user can share recipes."""
         return self.is_active  # All active users can share
     
+    def can_share_recipe(self, recipe):
+        """Check if user can share a specific recipe."""
+        # User must own the recipe
+        if recipe.user_id != self.id:
+            return False
+        # Recipe must be public
+        if recipe.visibility != 'public':
+            return False
+        # No need to check for friends - share button shown for all public recipes
+        # User will be directed to find friends if needed
+        return True
+    
+    def has_public_recipes(self):
+        """Check if user has any public recipes."""
+        return db.session.query(Recipe).filter(
+            Recipe.user_id == self.id,
+            Recipe.visibility == 'public',
+            Recipe.deleted_at.is_(None)
+        ).first() is not None
+    
+    def get_pending_shares_received(self):
+        """Get all pending recipe shares received by this user."""
+        return db.session.query(PendingRecipeShare).filter(
+            PendingRecipeShare.shared_with_user_id == self.id,
+            PendingRecipeShare.status == 'pending'
+        ).all()
+    
+    def get_pending_shares_count(self):
+        """Get count of pending recipe shares for this user."""
+        return db.session.query(PendingRecipeShare).filter(
+            PendingRecipeShare.shared_with_user_id == self.id,
+            PendingRecipeShare.status == 'pending'
+        ).count()
+    
     def can_publish_public_recipes(self):
         """Check if user can publish public recipes."""
         return self.is_admin or self.can_publish_public
+    
+    def get_friends(self):
+        """Get all friends of this user."""
+        friendships = db.session.query(Friendship).filter(
+            (Friendship.user1_id == self.id) | (Friendship.user2_id == self.id)
+        ).all()
+        
+        friend_ids = []
+        for friendship in friendships:
+            if friendship.user1_id == self.id:
+                friend_ids.append(friendship.user2_id)
+            else:
+                friend_ids.append(friendship.user1_id)
+        
+        if not friend_ids:
+            return []
+        
+        return db.session.query(User).filter(User.id.in_(friend_ids)).all()
+    
+    def is_friends_with(self, user_id):
+        """Check if this user is friends with another user."""
+        if user_id == self.id:
+            return False  # Can't be friends with yourself
+        
+        friendship = db.session.query(Friendship).filter(
+            ((Friendship.user1_id == self.id) & (Friendship.user2_id == user_id)) |
+            ((Friendship.user1_id == user_id) & (Friendship.user2_id == self.id))
+        ).first()
+        
+        return friendship is not None
+    
+    def get_pending_sent_requests(self):
+        """Get pending friend requests sent by this user."""
+        return db.session.query(FriendRequest).filter(
+            FriendRequest.sender_id == self.id,
+            FriendRequest.status == 'pending'
+        ).all()
+    
+    def get_pending_received_requests(self):
+        """Get pending friend requests received by this user."""
+        return db.session.query(FriendRequest).filter(
+            FriendRequest.recipient_id == self.id,
+            FriendRequest.status == 'pending'
+        ).all()
+    
+    def get_unread_notification_count(self):
+        """Get count of unread notifications."""
+        return db.session.query(Notification).filter(
+            Notification.user_id == self.id,
+            Notification.read == False
+        ).count()
 
 
 class UserPreference(db.Model):
@@ -243,6 +331,7 @@ class Recipe(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     published_at = db.Column(db.DateTime)
+    deleted_at = db.Column(db.DateTime, nullable=True)  # Soft delete support for shared recipes
     
     # Relationships
     recipe_ingredients = db.relationship('RecipeIngredient', back_populates='recipe', 
@@ -291,7 +380,43 @@ class Recipe(db.Model):
         # Only users with permission can make recipes public
         if visibility_level == 'public':
             return user.can_publish_public_recipes()
+        # If recipe has active shares, cannot change from public to non-public
+        if self.visibility == 'public' and visibility_level != 'public':
+            if self.has_active_shares():
+                return False
         return True  # Anyone can set private or incomplete
+    
+    def has_active_shares(self):
+        """Check if recipe has any active shares."""
+        from sqlalchemy import func
+        return db.session.query(func.count(RecipeShare.id)).filter(
+            RecipeShare.recipe_id == self.id
+        ).scalar() > 0
+    
+    def is_shared_with(self, user_id):
+        """Check if recipe is shared with a specific user."""
+        return db.session.query(RecipeShare).filter(
+            RecipeShare.recipe_id == self.id,
+            RecipeShare.shared_with_user_id == user_id
+        ).first() is not None
+    
+    def get_shared_with_friends(self):
+        """Get list of friends this recipe is shared with."""
+        shares = db.session.query(RecipeShare).filter(
+            RecipeShare.recipe_id == self.id
+        ).all()
+        friend_ids = [share.shared_with_user_id for share in shares]
+        return db.session.query(User).filter(User.id.in_(friend_ids)).all() if friend_ids else []
+    
+    def get_shared_by_friend(self, user_id):
+        """Get the friend who shared this recipe with the given user."""
+        share = db.session.query(RecipeShare).filter(
+            RecipeShare.recipe_id == self.id,
+            RecipeShare.shared_with_user_id == user_id
+        ).first()
+        if share:
+            return db.session.query(User).filter(User.id == share.shared_by_user_id).first()
+        return None
     
     def __repr__(self):
         return f'<Recipe {self.name}>'
@@ -573,4 +698,137 @@ class RecipeEmailLog(db.Model):
     # Relationships
     recipe = db.relationship('Recipe')
     sent_by = db.relationship('User')
+
+
+# ============================================================================
+# FRIEND FEATURE
+# ============================================================================
+
+class FriendRequest(db.Model):
+    """Friend requests between users."""
+    __tablename__ = 'friend_requests'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    status = db.Column(db.Enum('pending', 'accepted', 'rejected', 'cancelled'), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_friend_requests')
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_friend_requests')
+    
+    __table_args__ = (
+        db.UniqueConstraint('sender_id', 'recipient_id', name='unique_request'),
+    )
+    
+    def __repr__(self):
+        return f'<FriendRequest {self.sender_id} -> {self.recipient_id} ({self.status})>'
+
+
+class Friendship(db.Model):
+    """Established friendships between users."""
+    __tablename__ = 'friendships'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user1_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    user2_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user1 = db.relationship('User', foreign_keys=[user1_id], backref='friendships_as_user1')
+    user2 = db.relationship('User', foreign_keys=[user2_id], backref='friendships_as_user2')
+    
+    __table_args__ = (
+        db.UniqueConstraint('user1_id', 'user2_id', name='unique_friendship'),
+        db.CheckConstraint('user1_id < user2_id', name='check_user_order'),
+    )
+    
+    def get_other_user(self, user_id):
+        """Get the other user in this friendship."""
+        if self.user1_id == user_id:
+            return self.user2
+        elif self.user2_id == user_id:
+            return self.user1
+        return None
+    
+    def __repr__(self):
+        return f'<Friendship {self.user1_id} <-> {self.user2_id}>'
+
+
+class RecipeShare(db.Model):
+    """Tracks recipes shared with friends."""
+    __tablename__ = 'recipe_shares'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id', ondelete='CASCADE'), nullable=False)
+    shared_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    shared_with_user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    recipe = db.relationship('Recipe', backref='shares')
+    shared_by = db.relationship('User', foreign_keys=[shared_by_user_id], backref='recipes_shared')
+    shared_with = db.relationship('User', foreign_keys=[shared_with_user_id], backref='recipes_received')
+    
+    __table_args__ = (
+        db.UniqueConstraint('recipe_id', 'shared_by_user_id', 'shared_with_user_id', name='unique_share'),
+    )
+    
+    def __repr__(self):
+        return f'<RecipeShare recipe={self.recipe_id} by={self.shared_by_user_id} with={self.shared_with_user_id}>'
+
+
+class PendingRecipeShare(db.Model):
+    """Tracks pending recipe shares (before friendship or account creation)."""
+    __tablename__ = 'pending_recipe_shares'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id', ondelete='CASCADE'), nullable=False)
+    shared_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    shared_with_user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    recipient_email = db.Column(db.String(255), nullable=True)  # For non-users
+    friend_request_id = db.Column(db.Integer, db.ForeignKey('friend_requests.id', ondelete='CASCADE'), nullable=True)
+    token = db.Column(db.String(255), nullable=True, unique=True)  # For email share links
+    status = db.Column(db.Enum('pending', 'accepted', 'rejected'), default='pending', nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    recipe = db.relationship('Recipe', backref='pending_shares')
+    shared_by_user = db.relationship('User', foreign_keys=[shared_by_user_id], backref='pending_shares_sent')
+    shared_with_user = db.relationship('User', foreign_keys=[shared_with_user_id], backref='pending_shares_received')
+    friend_request = db.relationship('FriendRequest', backref='pending_shares')
+    
+    __table_args__ = (
+        db.Index('idx_pending_share_email', 'recipient_email'),
+        db.Index('idx_pending_share_token', 'token'),
+        db.Index('idx_pending_share_status', 'status'),
+    )
+    
+    def __repr__(self):
+        return f'<PendingRecipeShare recipe={self.recipe_id} by={self.shared_by_user_id} status={self.status}>'
+
+
+class Notification(db.Model):
+    """In-app notifications for users."""
+    __tablename__ = 'notifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    notification_type = db.Column(db.Enum('friend_request', 'recipe_shared'), nullable=False)
+    related_user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id', ondelete='CASCADE'), nullable=True)
+    message = db.Column(Text)
+    read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='notifications')
+    related_user = db.relationship('User', foreign_keys=[related_user_id])
+    recipe = db.relationship('Recipe')
+    
+    def __repr__(self):
+        return f'<Notification {self.notification_type} for user {self.user_id} (read={self.read})>'
 

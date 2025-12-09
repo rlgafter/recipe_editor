@@ -137,10 +137,12 @@
                                                class="btn btn-outline-primary" title="View">
                                                 <i class="bi bi-eye"></i>
                                             </a>
+                                            {% if recipe.visibility != 'public' %}
                                             <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" 
                                                class="btn btn-outline-secondary" title="Edit">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
+                                            {% endif %}
                                             <button type="button" 
                                                     class="btn btn-outline-danger" 
                                                     data-bs-toggle="modal" 

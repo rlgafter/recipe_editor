@@ -32,7 +32,14 @@
             <div class="card-body">
                 {# Define macros for each section #}
                 {% macro render_header() %}
-                <h1 class="card-title mb-3">{{ recipe.name }}</h1>
+                <h1 class="card-title mb-3">
+                    {{ recipe.name }}
+                    {% if is_shared_recipe and shared_by_friend %}
+                    <span class="badge bg-info ms-2">
+                        <i class="bi bi-share"></i> Shared by {{ shared_by_friend.display_name or shared_by_friend.username }}
+                    </span>
+                    {% endif %}
+                </h1>
                 {% endmacro %}
 
                 {% macro render_metadata() %}
@@ -135,10 +142,24 @@
                         <a href="{{ url_for('recipe_email', recipe_id=recipe.id) }}" class="btn btn-sm btn-success" style="padding: 0.25rem 0.5rem;">
                             Email
                         </a>
-                        {% if current_user.is_authenticated and current_user.can_delete_recipe(recipe) %}
-                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" style="padding: 0.25rem 0.5rem;">
-                            Delete
-                        </button>
+                        {% if current_user.is_authenticated %}
+                            {% if current_user.can_share_recipe(recipe) %}
+                                <a href="{{ url_for('recipe_share', recipe_id=recipe.id) }}" class="btn btn-sm btn-info" style="padding: 0.25rem 0.5rem;">
+                                    <i class="bi bi-share"></i> Share
+                                </a>
+                            {% elif recipe.user_id == current_user.id %}
+                                {% if current_user.can_delete_recipe(recipe) %}
+                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" style="padding: 0.25rem 0.5rem;">
+                                    Delete
+                                </button>
+                                {% endif %}
+                            {% elif is_shared_recipe %}
+                                <form method="POST" action="{{ url_for('recipe_unshare_self', recipe_id=recipe.id) }}" style="display: inline;" onsubmit="return confirm('Remove this recipe from your recipes?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" style="padding: 0.25rem 0.5rem;">
+                                        <i class="bi bi-x-circle"></i> Remove from My Recipes
+                                    </button>
+                                </form>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>

@@ -258,9 +258,24 @@ def auth_register():
         success, user, error_msg = create_user_account(username, email, password, display_name or None)
         
         if success:
+            # Link any pending shares for this email
+            from db_models import PendingRecipeShare
+            pending_shares = db.session.query(PendingRecipeShare).filter(
+                PendingRecipeShare.recipient_email == email.lower(),
+                PendingRecipeShare.shared_with_user_id.is_(None),
+                PendingRecipeShare.status == 'pending'
+            ).all()
+            
+            if pending_shares:
+                for pending_share in pending_shares:
+                    pending_share.shared_with_user_id = user.id
+                db.session.commit()
+                flash(f'Welcome! You have {len(pending_shares)} pending recipe share(s) waiting for you.', 'info')
+            
             # Auto-login
             login_user(user)
-            flash(f'Welcome to Recipe Editor, {user.display_name}!', 'success')
+            if not pending_shares:
+                flash(f'Welcome to Recipe Editor, {user.display_name}!', 'success')
             return redirect(url_for('recipe_list'))
         else:
             flash(error_msg, 'error')
@@ -526,7 +541,15 @@ def setup_password(token):
 # ============================================================================
 
 @app.route('/')
+def home():
+    """Home page for unauthenticated users."""
+    if current_user.is_authenticated:
+        return redirect(url_for('recipe_list'))
+    return render_template('home.html')
+
+
 @app.route('/recipes')
+@login_required
 def recipe_list():
     """Display list of recipes."""
     try:
@@ -598,6 +621,47 @@ def recipe_list():
             app.logger.error(f"Traceback: {traceback.format_exc()}")
             recipes = []
         
+        # Get shared recipe information for authenticated users
+        shared_recipe_info = {}
+        if user_id:
+            from db_models import RecipeShare
+            shared_recipes = db.session.query(RecipeShare).filter(
+                RecipeShare.shared_with_user_id == user_id
+            ).all()
+            for share in shared_recipes:
+                if share.recipe_id not in shared_recipe_info:
+                    shared_recipe_info[share.recipe_id] = {
+                        'shared_by': share.shared_by_user_id,
+                        'shared_by_user': None
+                    }
+            # Get user objects for shared_by
+            if shared_recipe_info:
+                from db_models import User
+                user_ids = [info['shared_by'] for info in shared_recipe_info.values()]
+                users = db.session.query(User).filter(User.id.in_(user_ids)).all()
+                user_dict = {u.id: u for u in users}
+                for recipe_id, info in shared_recipe_info.items():
+                    info['shared_by_user'] = user_dict.get(info['shared_by'])
+        
+        # Get pending shares for authenticated users
+        pending_shares_list = []
+        if user_id:
+            from db_models import PendingRecipeShare, Recipe, User
+            pending_shares = db.session.query(PendingRecipeShare).filter(
+                PendingRecipeShare.shared_with_user_id == user_id,
+                PendingRecipeShare.status == 'pending'
+            ).all()
+            
+            for pending_share in pending_shares:
+                recipe = db.session.query(Recipe).filter(Recipe.id == pending_share.recipe_id).first()
+                sender = db.session.query(User).filter(User.id == pending_share.shared_by_user_id).first()
+                if recipe:
+                    pending_shares_list.append({
+                        'pending_share': pending_share,
+                        'recipe': recipe,
+                        'sender': sender
+                    })
+        
         app.logger.debug("Rendering template...")
         try:
             return render_template(
@@ -606,7 +670,10 @@ def recipe_list():
                 all_tags=all_tags,
                 selected_tags=selected_tags,
                 match_all=match_all,
-                search_term=search_term
+                search_term=search_term,
+                shared_recipe_info=shared_recipe_info,
+                current_user_id=user_id,
+                pending_shares_list=pending_shares_list
             )
         except Exception as e:
             app.logger.error(f"Error rendering template: {e}", exc_info=True)
@@ -629,6 +696,7 @@ def recipe_list():
 
 
 @app.route('/recipe/<int:recipe_id>')
+@login_required
 def recipe_view(recipe_id):
     """Display a single recipe."""
     user_id = current_user.id if current_user.is_authenticated else None
@@ -636,7 +704,10 @@ def recipe_view(recipe_id):
     
     if not recipe:
         flash('Recipe not found or you do not have permission to view it', 'error')
-        return redirect(url_for('recipe_list'))
+        if current_user.is_authenticated:
+            return redirect(url_for('recipe_list'))
+        else:
+            return redirect(url_for('home'))
     
     # Increment view count
     storage.increment_view_count(recipe_id)
@@ -650,6 +721,13 @@ def recipe_view(recipe_id):
     from db_models import User
     submitter = db.session.query(User).filter(User.id == recipe.user_id).first()
     
+    # Check if recipe is shared with current user
+    shared_by_friend = None
+    is_shared_recipe = False
+    if current_user.is_authenticated and recipe.user_id != current_user.id:
+        shared_by_friend = recipe.get_shared_by_friend(current_user.id)
+        is_shared_recipe = shared_by_friend is not None
+    
     email_configured = email_service.is_configured()
     
     # Import layout configuration
@@ -662,7 +740,9 @@ def recipe_view(recipe_id):
         is_favorited=is_favorited,
         email_configured=email_configured,
         layout_sections=get_recipe_layout(),
-        is_section_enabled=is_section_enabled
+        is_section_enabled=is_section_enabled,
+        shared_by_friend=shared_by_friend,
+        is_shared_recipe=is_shared_recipe
     )
 
 
@@ -689,12 +769,22 @@ def recipe_new():
         for i, ing in enumerate(recipe_data.get('ingredients', [])):
             app.logger.info(f"  Ingredient {i+1}: desc='{ing.get('description')}', amount='{ing.get('amount')}', unit='{ing.get('unit')}'")
         
+        # Get visibility for validation
+        visibility = recipe_data.get('visibility', 'incomplete')
+        
         # Validate recipe data
-        is_valid, errors = _validate_recipe_data(recipe_data)
+        is_valid, errors, warnings = _validate_recipe_data(recipe_data, visibility=visibility)
         app.logger.info(f"Validation result: {'PASS' if is_valid else 'FAIL'}")
         if errors:
             app.logger.info(f"Validation errors: {errors}")
+        if warnings:
+            app.logger.info(f"Validation warnings: {warnings}")
         
+        # Display warnings (non-blocking)
+        for warning in warnings:
+            flash(warning, 'warning')
+        
+        # Display errors (blocking)
         if not is_valid:
             for error in errors:
                 flash(error, 'error')
@@ -707,7 +797,6 @@ def recipe_new():
                                  new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 400
         
         # Validate visibility permission
-        visibility = recipe_data.get('visibility', 'incomplete')
         if visibility == 'public' and not current_user.can_publish_public_recipes():
             flash('You do not have permission to publish public recipes', 'error')
             all_tags = storage.get_all_tags(current_user.id)
@@ -779,6 +868,11 @@ def recipe_edit(recipe_id):
         flash('Recipe not found', 'error')
         return redirect(url_for('recipe_list'))
     
+    # Public recipes cannot be edited
+    if recipe.visibility == 'public':
+        flash('Public recipes cannot be edited', 'error')
+        return redirect(url_for('recipe_view', recipe_id=recipe_id))
+    
     if not current_user.can_edit_recipe(recipe):
         flash('You do not have permission to edit this recipe', 'error')
         return redirect(url_for('recipe_view', recipe_id=recipe_id))
@@ -793,26 +887,46 @@ def recipe_edit(recipe_id):
     try:
         recipe_data = _parse_recipe_form(request.form)
         
+        # Check if trying to change visibility from public to non-public when recipe has shares
+        new_visibility = recipe_data.get('visibility', recipe.visibility)
+        if recipe.visibility == 'public' and new_visibility != 'public':
+            if recipe.has_active_shares():
+                flash('Cannot change visibility: This recipe is shared with friends and must remain public', 'error')
+                all_tags = storage.get_all_tags(current_user.id)
+                gemini_configured = gemini_service.is_configured()
+                return render_template('recipe_form.html', recipe=recipe, all_tags=all_tags, 
+                                     new_tags=[], gemini_configured=gemini_configured), 400
+        
+        # Get visibility for validation
+        visibility = recipe_data.get('visibility', recipe.visibility if recipe else 'incomplete')
+        
         # Validate recipe data
-        is_valid, errors = _validate_recipe_data(recipe_data)
+        is_valid, errors, warnings = _validate_recipe_data(recipe_data, visibility=visibility)
+        
+        # Display warnings (non-blocking)
+        for warning in warnings:
+            flash(warning, 'warning')
+        
+        # Display errors (blocking)
         if not is_valid:
             for error in errors:
                 flash(error, 'error')
             all_tags = storage.get_all_tags(current_user.id)
             gemini_configured = gemini_service.is_configured()
-            # Preserve user's entered data in the form
+            # Preserve user's entered data in the form, but keep recipe object for template compatibility
             recipe_form_data = _create_form_data_object(recipe_data, recipe_id)
+            recipe_form_data.user_id = recipe.user_id  # Add user_id for template compatibility
             return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
                                  new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 400
         
         # Validate visibility permission
-        visibility = recipe_data.get('visibility', 'incomplete')
         if visibility == 'public' and not current_user.can_publish_public_recipes():
             flash('You do not have permission to publish public recipes', 'error')
             all_tags = storage.get_all_tags(current_user.id)
             gemini_configured = gemini_service.is_configured()
-            # Preserve user's entered data in the form
+            # Preserve user's entered data in the form, but keep recipe object for template compatibility
             recipe_form_data = _create_form_data_object(recipe_data, recipe_id)
+            recipe_form_data.user_id = recipe.user_id  # Add user_id for template compatibility
             return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
                                  new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 403
         
@@ -830,9 +944,9 @@ def recipe_edit(recipe_id):
                     flash('The source URL is not publicly accessible. Please provide a valid URL or leave it blank.', 'error')
                     all_tags = storage.get_all_tags(current_user.id)
                     gemini_configured = gemini_service.is_configured()
-                    # Preserve user's entered data in the form
-                    recipe_form_data = _create_form_data_object(recipe_data)
-                    recipe_form_data.id = recipe_id  # Keep the recipe ID for the form action
+                    # Preserve user's entered data in the form, but keep recipe object for template compatibility
+                    recipe_form_data = _create_form_data_object(recipe_data, recipe_id)
+                    recipe_form_data.user_id = recipe.user_id  # Add user_id for template compatibility
                     return render_template('recipe_form.html', recipe=recipe_form_data, all_tags=all_tags, 
                                          new_tags=recipe_data.get('tags', []), gemini_configured=gemini_configured), 400
         
@@ -1114,6 +1228,1012 @@ def recipe_email(recipe_id):
 
 
 # ============================================================================
+# Friend Management Routes
+# ============================================================================
+
+@app.route('/friends/find', methods=['GET', 'POST'])
+@login_required
+def friends_find():
+    """Find friend by email and send friend request. Can also share recipe."""
+    from db_models import User, FriendRequest, Friendship, Notification, Recipe, RecipeShare, PendingRecipeShare
+    import secrets
+    
+    # Check if sharing a recipe
+    recipe_id = request.args.get('recipe_id', type=int) or request.form.get('recipe_id', type=int)
+    recipe = None
+    if recipe_id:
+        recipe = storage.get_recipe(recipe_id, current_user.id)
+        if not recipe or recipe.user_id != current_user.id or recipe.visibility != 'public':
+            recipe = None
+            recipe_id = None
+    
+    if request.method == 'GET':
+        return render_template('friends_find.html', recipe=recipe, recipe_id=recipe_id)
+    
+    # POST - Process friend request and/or recipe share
+    email = request.form.get('email', '').strip().lower()
+    
+    if not email:
+        flash('Email address is required', 'error')
+        return render_template('friends_find.html', recipe=recipe, recipe_id=recipe_id), 400
+    
+    # Validate email format
+    import re
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, email):
+        flash('Please enter a valid email address', 'error')
+        return render_template('friends_find.html', recipe=recipe, recipe_id=recipe_id), 400
+    
+    # Check if user is trying to friend themselves
+    if email == current_user.email:
+        flash('You cannot send a friend request to yourself', 'error')
+        return render_template('friends_find.html', recipe=recipe, recipe_id=recipe_id), 400
+    
+    # Find user by email (without revealing if they exist)
+    recipient = db.session.query(User).filter(User.email == email).first()
+    
+    if recipient:
+        # User exists
+        if current_user.is_friends_with(recipient.id):
+            # Already friends - share recipe directly if provided
+            if recipe_id:
+                existing_share = db.session.query(RecipeShare).filter(
+                    RecipeShare.recipe_id == recipe_id,
+                    RecipeShare.shared_by_user_id == current_user.id,
+                    RecipeShare.shared_with_user_id == recipient.id
+                ).first()
+                
+                if not existing_share:
+                    share = RecipeShare(
+                        recipe_id=recipe_id,
+                        shared_by_user_id=current_user.id,
+                        shared_with_user_id=recipient.id
+                    )
+                    db.session.add(share)
+                    
+                    notification = Notification(
+                        user_id=recipient.id,
+                        notification_type='recipe_shared',
+                        related_user_id=current_user.id,
+                        recipe_id=recipe_id,
+                        message=f"{current_user.display_name or current_user.username} shared a recipe with you: {recipe.name}"
+                    )
+                    db.session.add(notification)
+                    db.session.commit()
+                    flash(f'Recipe shared with {recipient.display_name or recipient.username}!', 'success')
+                else:
+                    flash('Recipe already shared with this friend', 'info')
+                return redirect(url_for('recipe_view', recipe_id=recipe_id))
+            else:
+                flash('You are already friends with this user', 'info')
+                return render_template('friends_find.html', recipe=recipe, recipe_id=recipe_id)
+        
+        # Check if request already exists
+        existing_request = db.session.query(FriendRequest).filter(
+            ((FriendRequest.sender_id == current_user.id) & (FriendRequest.recipient_id == recipient.id)) |
+            ((FriendRequest.sender_id == recipient.id) & (FriendRequest.recipient_id == current_user.id))
+        ).filter(FriendRequest.status == 'pending').first()
+        
+        if existing_request:
+            if existing_request.sender_id == current_user.id:
+                if recipe_id:
+                    # Create pending share linked to existing request
+                    existing_pending = db.session.query(PendingRecipeShare).filter(
+                        PendingRecipeShare.recipe_id == recipe_id,
+                        PendingRecipeShare.shared_by_user_id == current_user.id,
+                        PendingRecipeShare.shared_with_user_id == recipient.id,
+                        PendingRecipeShare.status == 'pending'
+                    ).first()
+                    
+                    if not existing_pending:
+                        pending_share = PendingRecipeShare(
+                            recipe_id=recipe_id,
+                            shared_by_user_id=current_user.id,
+                            shared_with_user_id=recipient.id,
+                            friend_request_id=existing_request.id,
+                            status='pending'
+                        )
+                        db.session.add(pending_share)
+                        db.session.commit()
+                        flash('Friend request already sent. Recipe will be shared once accepted.', 'info')
+                    else:
+                        flash('Friend request already sent. Recipe share already pending.', 'info')
+                    return redirect(url_for('recipe_view', recipe_id=recipe_id))
+                else:
+                    flash('You have already sent a friend request to this user', 'info')
+                    return render_template('friends_find.html', recipe=recipe, recipe_id=recipe_id)
+            else:
+                flash('This user has already sent you a friend request. Please check your friend requests.', 'info')
+                return render_template('friends_find.html', recipe=recipe, recipe_id=recipe_id)
+        
+        # Create friend request
+        friend_request = FriendRequest(
+            sender_id=current_user.id,
+            recipient_id=recipient.id,
+            status='pending'
+        )
+        db.session.add(friend_request)
+        db.session.flush()
+        
+        # If sharing recipe, create pending share
+        if recipe_id:
+            pending_share = PendingRecipeShare(
+                recipe_id=recipe_id,
+                shared_by_user_id=current_user.id,
+                shared_with_user_id=recipient.id,
+                friend_request_id=friend_request.id,
+                status='pending'
+            )
+            db.session.add(pending_share)
+        
+        # Create notification for recipient
+        notification = Notification(
+            user_id=recipient.id,
+            notification_type='friend_request',
+            related_user_id=current_user.id,
+            message=f"{current_user.display_name or current_user.username} sent you a friend request"
+        )
+        db.session.add(notification)
+        
+        db.session.commit()
+        
+        app.logger.info(f"Friend request sent: {current_user.id} -> {recipient.id}")
+        
+        if recipe_id:
+            flash('Friend request sent. Recipe will be shared once accepted.', 'success')
+            return redirect(url_for('recipe_view', recipe_id=recipe_id))
+        else:
+            flash('If a user with that email exists, they will be notified of your friend request.', 'success')
+            return redirect(url_for('friends_requests'))
+    else:
+        # User doesn't exist
+        if recipe_id:
+            # Ask if user wants to send recipe via email
+            return render_template('friends_find.html', recipe=recipe, recipe_id=recipe_id, 
+                                 email=email, show_email_form=True)
+        else:
+            # Regular friend request - always show success (security)
+            flash('If a user with that email exists, they will be notified of your friend request.', 'success')
+            return redirect(url_for('friends_requests'))
+
+
+@app.route('/friends/find/send-email', methods=['POST'])
+@login_required
+def friends_find_send_email():
+    """Send recipe to non-user via email."""
+    from db_models import Recipe, PendingRecipeShare
+    import secrets
+    
+    recipe_id = request.form.get('recipe_id', type=int)
+    email = request.form.get('email', '').strip().lower()
+    
+    if not recipe_id or not email:
+        flash('Missing recipe or email', 'error')
+        return redirect(url_for('friends_find'))
+    
+    recipe = storage.get_recipe(recipe_id, current_user.id)
+    if not recipe or recipe.user_id != current_user.id or recipe.visibility != 'public':
+        flash('Invalid recipe', 'error')
+        return redirect(url_for('recipe_list'))
+    
+    # Validate email format
+    import re
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, email):
+        flash('Invalid email address', 'error')
+        return redirect(url_for('friends_find', recipe_id=recipe_id))
+    
+    # Create pending share with token
+    token = secrets.token_urlsafe(32)
+    pending_share = PendingRecipeShare(
+        recipe_id=recipe_id,
+        shared_by_user_id=current_user.id,
+        recipient_email=email,
+        token=token,
+        status='pending'
+    )
+    db.session.add(pending_share)
+    db.session.commit()
+    
+    # Send email with protected link
+    try:
+        from email_service import email_service
+        from db_models import Recipe
+        recipe_obj = db.session.query(Recipe).filter(Recipe.id == recipe_id).first()
+        if recipe_obj:
+            recipe_url = url_for('recipe_view_token', recipe_id=recipe_id, token=token, _external=True)
+            custom_message = f"I'd like to share this recipe with you. Please create an account to view it.\n\nView recipe: {recipe_url}"
+            success, error_msg = email_service.send_recipe(
+                recipe=recipe_obj,
+                recipient_email=email,
+                recipient_name='',
+                custom_message=custom_message
+            )
+            if success:
+                flash('Recipe link sent via email!', 'success')
+            else:
+                flash('Recipe share created, but email sending failed. Please try again later.', 'warning')
+    except Exception as e:
+        app.logger.error(f"Error sending email share: {e}")
+        flash('Recipe share created, but email sending failed. Please try again later.', 'warning')
+    
+    return redirect(url_for('recipe_view', recipe_id=recipe_id))
+
+
+@app.route('/recipe/<int:recipe_id>/view/<token>', methods=['GET'])
+def recipe_view_token(recipe_id, token):
+    """View recipe via token (for non-users who received email)."""
+    from db_models import Recipe, PendingRecipeShare, User
+    
+    # Find pending share with this token
+    pending_share = db.session.query(PendingRecipeShare).filter(
+        PendingRecipeShare.recipe_id == recipe_id,
+        PendingRecipeShare.token == token,
+        PendingRecipeShare.status == 'pending'
+    ).first()
+    
+    if not pending_share:
+        flash('Invalid or expired recipe link', 'error')
+        return redirect(url_for('home'))
+    
+    recipe = storage.get_recipe(recipe_id, None)
+    if not recipe or recipe.visibility != 'public':
+        flash('Recipe not found or not accessible', 'error')
+        return redirect(url_for('home'))
+    
+    # If user is logged in and matches the recipient email, link the pending share
+    if current_user.is_authenticated:
+        if pending_share.recipient_email and pending_share.recipient_email.lower() == current_user.email.lower():
+            # Link pending share to user account
+            pending_share.shared_with_user_id = current_user.id
+            db.session.commit()
+            # Redirect to pending shares page
+            return redirect(url_for('pending_shares'))
+    
+    # Show recipe with registration prompt
+    return render_template('recipe_view_token.html', recipe=recipe, token=token, 
+                         recipient_email=pending_share.recipient_email)
+
+
+@app.route('/pending-shares', methods=['GET'])
+@login_required
+def pending_shares():
+    """View and manage pending recipe shares."""
+    from db_models import PendingRecipeShare, Recipe, User
+    
+    pending_shares_list = current_user.get_pending_shares_received()
+    
+    # Get full details
+    shares_with_details = []
+    for pending_share in pending_shares_list:
+        recipe = db.session.query(Recipe).filter(Recipe.id == pending_share.recipe_id).first()
+        sender = db.session.query(User).filter(User.id == pending_share.shared_by_user_id).first()
+        if recipe:
+            shares_with_details.append({
+                'pending_share': pending_share,
+                'recipe': recipe,
+                'sender': sender
+            })
+    
+    return render_template('pending_shares.html', shares_with_details=shares_with_details)
+
+
+@app.route('/pending-share/<int:pending_share_id>/accept', methods=['POST'])
+@login_required
+def pending_share_accept(pending_share_id):
+    """Accept a pending recipe share."""
+    from db_models import PendingRecipeShare, RecipeShare, Notification, Recipe, User
+    
+    pending_share = db.session.query(PendingRecipeShare).filter(
+        PendingRecipeShare.id == pending_share_id,
+        PendingRecipeShare.shared_with_user_id == current_user.id,
+        PendingRecipeShare.status == 'pending'
+    ).first()
+    
+    if not pending_share:
+        flash('Pending share not found', 'error')
+        return redirect(url_for('pending_shares'))
+    
+    # Check if recipe share already exists
+    existing_share = db.session.query(RecipeShare).filter(
+        RecipeShare.recipe_id == pending_share.recipe_id,
+        RecipeShare.shared_by_user_id == pending_share.shared_by_user_id,
+        RecipeShare.shared_with_user_id == current_user.id
+    ).first()
+    
+    if not existing_share:
+        # Create actual share
+        share = RecipeShare(
+            recipe_id=pending_share.recipe_id,
+            shared_by_user_id=pending_share.shared_by_user_id,
+            shared_with_user_id=current_user.id
+        )
+        db.session.add(share)
+        
+        # Create notification
+        recipe = db.session.query(Recipe).filter(Recipe.id == pending_share.recipe_id).first()
+        sender = db.session.query(User).filter(User.id == pending_share.shared_by_user_id).first()
+        if recipe and sender:
+            notification = Notification(
+                user_id=current_user.id,
+                notification_type='recipe_shared',
+                related_user_id=pending_share.shared_by_user_id,
+                recipe_id=pending_share.recipe_id,
+                message=f"{sender.display_name or sender.username} shared a recipe with you: {recipe.name}"
+            )
+            db.session.add(notification)
+    
+    # Mark pending share as accepted
+    pending_share.status = 'accepted'
+    db.session.commit()
+    
+    flash('Recipe share accepted!', 'success')
+    return redirect(url_for('pending_shares'))
+
+
+@app.route('/pending-share/<int:pending_share_id>/reject', methods=['POST'])
+@login_required
+def pending_share_reject(pending_share_id):
+    """Reject a pending recipe share."""
+    from db_models import PendingRecipeShare
+    
+    pending_share = db.session.query(PendingRecipeShare).filter(
+        PendingRecipeShare.id == pending_share_id,
+        PendingRecipeShare.shared_with_user_id == current_user.id,
+        PendingRecipeShare.status == 'pending'
+    ).first()
+    
+    if not pending_share:
+        flash('Pending share not found', 'error')
+        return redirect(url_for('pending_shares'))
+    
+    # Mark pending share as rejected
+    pending_share.status = 'rejected'
+    db.session.commit()
+    
+    flash('Recipe share rejected', 'info')
+    return redirect(url_for('pending_shares'))
+
+
+@app.route('/friends/requests')
+@login_required
+def friends_requests():
+    """View pending friend requests."""
+    from db_models import FriendRequest, User
+    
+    received_requests = current_user.get_pending_received_requests()
+    sent_requests = current_user.get_pending_sent_requests()
+    
+    # Get user details for requests
+    received_with_users = []
+    for req in received_requests:
+        sender = db.session.query(User).filter(User.id == req.sender_id).first()
+        received_with_users.append({
+            'request': req,
+            'user': sender
+        })
+    
+    sent_with_users = []
+    for req in sent_requests:
+        recipient = db.session.query(User).filter(User.id == req.recipient_id).first()
+        sent_with_users.append({
+            'request': req,
+            'user': recipient
+        })
+    
+    return render_template(
+        'friends_requests.html',
+        received_requests=received_with_users,
+        sent_requests=sent_with_users
+    )
+
+
+@app.route('/friends/requests/<int:request_id>/accept', methods=['POST'])
+@login_required
+def friends_request_accept(request_id):
+    """Accept a friend request and auto-share any pending recipes."""
+    from db_models import FriendRequest, Friendship, Notification, RecipeShare, PendingRecipeShare, Recipe, User
+    
+    friend_request = db.session.query(FriendRequest).filter(
+        FriendRequest.id == request_id,
+        FriendRequest.recipient_id == current_user.id,
+        FriendRequest.status == 'pending'
+    ).first()
+    
+    if not friend_request:
+        flash('Friend request not found or already processed', 'error')
+        return redirect(url_for('friends_requests'))
+    
+    # Create friendship (ensure user1_id < user2_id)
+    user1_id = min(friend_request.sender_id, friend_request.recipient_id)
+    user2_id = max(friend_request.sender_id, friend_request.recipient_id)
+    
+    # Check if friendship already exists
+    existing_friendship = db.session.query(Friendship).filter(
+        Friendship.user1_id == user1_id,
+        Friendship.user2_id == user2_id
+    ).first()
+    
+    if not existing_friendship:
+        friendship = Friendship(
+            user1_id=user1_id,
+            user2_id=user2_id
+        )
+        db.session.add(friendship)
+    
+    # Update request status
+    friend_request.status = 'accepted'
+    
+    # Auto-share any pending recipes linked to this friend request
+    pending_shares = db.session.query(PendingRecipeShare).filter(
+        PendingRecipeShare.friend_request_id == friend_request.id,
+        PendingRecipeShare.status == 'pending'
+    ).all()
+    
+    shared_count = 0
+    for pending_share in pending_shares:
+        # Check if recipe share already exists
+        existing_share = db.session.query(RecipeShare).filter(
+            RecipeShare.recipe_id == pending_share.recipe_id,
+            RecipeShare.shared_by_user_id == pending_share.shared_by_user_id,
+            RecipeShare.shared_with_user_id == current_user.id
+        ).first()
+        
+        if not existing_share:
+            # Create actual share
+            share = RecipeShare(
+                recipe_id=pending_share.recipe_id,
+                shared_by_user_id=pending_share.shared_by_user_id,
+                shared_with_user_id=current_user.id
+            )
+            db.session.add(share)
+            shared_count += 1
+            
+            # Create notification
+            recipe = db.session.query(Recipe).filter(Recipe.id == pending_share.recipe_id).first()
+            if recipe:
+                notification = Notification(
+                    user_id=current_user.id,
+                    notification_type='recipe_shared',
+                    related_user_id=pending_share.shared_by_user_id,
+                    recipe_id=pending_share.recipe_id,
+                    message=f"{db.session.query(User).filter(User.id == pending_share.shared_by_user_id).first().display_name or db.session.query(User).filter(User.id == pending_share.shared_by_user_id).first().username} shared a recipe with you: {recipe.name}"
+                )
+                db.session.add(notification)
+        
+        # Mark pending share as accepted
+        pending_share.status = 'accepted'
+    
+    # Mark notification as read
+    notification = db.session.query(Notification).filter(
+        Notification.user_id == current_user.id,
+        Notification.notification_type == 'friend_request',
+        Notification.related_user_id == friend_request.sender_id,
+        Notification.read == False
+    ).first()
+    
+    if notification:
+        notification.read = True
+    
+    db.session.commit()
+    
+    app.logger.info(f"Friend request accepted: {friend_request.sender_id} <-> {friend_request.recipient_id}")
+    if shared_count > 0:
+        flash(f'Friend request accepted! {shared_count} recipe(s) have been shared with you.', 'success')
+    else:
+        flash('Friend request accepted!', 'success')
+    return redirect(url_for('friends_requests'))
+
+
+@app.route('/friends/requests/<int:request_id>/reject', methods=['POST'])
+@login_required
+def friends_request_reject(request_id):
+    """Reject a friend request."""
+    from db_models import FriendRequest, Notification
+    
+    friend_request = db.session.query(FriendRequest).filter(
+        FriendRequest.id == request_id,
+        FriendRequest.recipient_id == current_user.id,
+        FriendRequest.status == 'pending'
+    ).first()
+    
+    if not friend_request:
+        flash('Friend request not found or already processed', 'error')
+        return redirect(url_for('friends_requests'))
+    
+    # Update request status (don't notify sender)
+    friend_request.status = 'rejected'
+    
+    # Mark notification as read
+    notification = db.session.query(Notification).filter(
+        Notification.user_id == current_user.id,
+        Notification.notification_type == 'friend_request',
+        Notification.related_user_id == friend_request.sender_id,
+        Notification.read == False
+    ).first()
+    
+    if notification:
+        notification.read = True
+    
+    db.session.commit()
+    
+    app.logger.info(f"Friend request rejected: {friend_request.sender_id} -> {friend_request.recipient_id}")
+    flash('Friend request rejected', 'info')
+    return redirect(url_for('friends_requests'))
+
+
+@app.route('/friends/requests/<int:request_id>/cancel', methods=['POST'])
+@login_required
+def friends_request_cancel(request_id):
+    """Cancel a sent friend request."""
+    from db_models import FriendRequest
+    
+    friend_request = db.session.query(FriendRequest).filter(
+        FriendRequest.id == request_id,
+        FriendRequest.sender_id == current_user.id,
+        FriendRequest.status == 'pending'
+    ).first()
+    
+    if not friend_request:
+        flash('Friend request not found or already processed', 'error')
+        return redirect(url_for('friends_requests'))
+    
+    # Update request status
+    friend_request.status = 'cancelled'
+    db.session.commit()
+    
+    app.logger.info(f"Friend request cancelled: {current_user.id} -> {friend_request.recipient_id}")
+    flash('Friend request cancelled', 'info')
+    return redirect(url_for('friends_requests'))
+
+
+@app.route('/friends')
+@login_required
+def friends_list():
+    """List all friends."""
+    from db_models import User, Friendship
+    
+    friends = current_user.get_friends()
+    
+    # Get friendship creation dates
+    friendships = db.session.query(Friendship).filter(
+        (Friendship.user1_id == current_user.id) | (Friendship.user2_id == current_user.id)
+    ).all()
+    
+    friend_dates = {}
+    for friendship in friendships:
+        other_user_id = friendship.user2_id if friendship.user1_id == current_user.id else friendship.user1_id
+        friend_dates[other_user_id] = friendship.created_at
+    
+    # Create list with friendship dates
+    friends_with_dates = []
+    for friend in friends:
+        friends_with_dates.append({
+            'friend': friend,
+            'friendship_date': friend_dates.get(friend.id)
+        })
+    
+    return render_template('friends_list.html', friends_data=friends_with_dates)
+
+
+@app.route('/friends/<int:friend_id>/remove', methods=['POST'])
+@login_required
+def friends_remove(friend_id):
+    """Remove a friend."""
+    from db_models import Friendship
+    
+    # Find friendship (check both user1 and user2)
+    friendship = db.session.query(Friendship).filter(
+        ((Friendship.user1_id == current_user.id) & (Friendship.user2_id == friend_id)) |
+        ((Friendship.user1_id == friend_id) & (Friendship.user2_id == current_user.id))
+    ).first()
+    
+    if not friendship:
+        flash('Friendship not found', 'error')
+        return redirect(url_for('friends_list'))
+    
+    # Delete friendship (recipe shares remain as per requirements)
+    db.session.delete(friendship)
+    db.session.commit()
+    
+    app.logger.info(f"Friendship removed: {current_user.id} <-> {friend_id}")
+    flash('Friend removed', 'info')
+    return redirect(url_for('friends_list'))
+
+
+# ============================================================================
+# Recipe Sharing Routes
+# ============================================================================
+
+@app.route('/recipe/<int:recipe_id>/share', methods=['GET'])
+@login_required
+def recipe_share(recipe_id):
+    """Redirect to find friend page with recipe to share."""
+    recipe = storage.get_recipe(recipe_id, current_user.id)
+    
+    if not recipe:
+        flash('Recipe not found', 'error')
+        return redirect(url_for('recipe_list'))
+    
+    # Check if user owns the recipe
+    if recipe.user_id != current_user.id:
+        flash('You can only share recipes you own', 'error')
+        return redirect(url_for('recipe_view', recipe_id=recipe_id))
+    
+    # Check if recipe is public (required for sharing)
+    if recipe.visibility != 'public':
+        flash('Only public recipes can be shared with friends', 'error')
+        return redirect(url_for('recipe_view', recipe_id=recipe_id))
+    
+    # Redirect to find friend page with recipe_id
+    return redirect(url_for('friends_find', recipe_id=recipe_id))
+
+
+@app.route('/recipes/share/select', methods=['GET', 'POST'])
+@login_required
+def recipes_share_select():
+    """Select recipes to share (checkbox interface)."""
+    from db_models import Recipe
+    
+    if request.method == 'GET':
+        # Get all user's public recipes
+        public_recipes = storage.get_user_recipes(current_user.id, visibility='public')
+        # Filter out soft-deleted
+        public_recipes = [r for r in public_recipes if r.deleted_at is None]
+        
+        return render_template('recipes_share_select.html', recipes=public_recipes)
+    
+    # POST - Process selected recipes
+    selected_recipe_ids = request.form.getlist('recipe_ids')
+    
+    if not selected_recipe_ids:
+        flash('Please select at least one recipe to share', 'error')
+        public_recipes = storage.get_user_recipes(current_user.id, visibility='public')
+        public_recipes = [r for r in public_recipes if r.deleted_at is None]
+        return render_template('recipes_share_select.html', recipes=public_recipes), 400
+    
+    # Validate recipe IDs
+    recipe_ids = [int(rid) for rid in selected_recipe_ids]
+    user_recipe_ids = {r.id for r in storage.get_user_recipes(current_user.id, visibility='public')}
+    
+    if not all(rid in user_recipe_ids for rid in recipe_ids):
+        flash('Invalid recipe selected', 'error')
+        return redirect(url_for('recipes_share_select'))
+    
+    # Redirect to share page with recipe IDs
+    recipe_ids_str = ','.join(str(rid) for rid in recipe_ids)
+    return redirect(url_for('recipes_share', recipe_ids=recipe_ids_str))
+
+
+@app.route('/recipes/share', methods=['GET', 'POST'])
+@login_required
+def recipes_share():
+    """Share selected recipes with friends via email."""
+    from db_models import Recipe, User, FriendRequest, Friendship, RecipeShare, PendingRecipeShare, Notification
+    import secrets
+    
+    # Get recipe IDs from query parameter or form
+    recipe_ids_str = request.args.get('recipe_ids') or request.form.get('recipe_ids', '')
+    
+    if not recipe_ids_str:
+        flash('No recipes selected', 'error')
+        return redirect(url_for('recipes_share_select'))
+    
+    try:
+        recipe_ids = [int(rid.strip()) for rid in recipe_ids_str.split(',') if rid.strip()]
+    except ValueError:
+        flash('Invalid recipe IDs', 'error')
+        return redirect(url_for('recipes_share_select'))
+    
+    # Validate recipes belong to user and are public
+    recipes = []
+    for recipe_id in recipe_ids:
+        recipe = storage.get_recipe(recipe_id, current_user.id)
+        if not recipe or recipe.user_id != current_user.id or recipe.visibility != 'public':
+            flash('Invalid recipe selected', 'error')
+            return redirect(url_for('recipes_share_select'))
+        recipes.append(recipe)
+    
+    if request.method == 'GET':
+        return render_template('recipes_share.html', recipes=recipes, recipe_ids=recipe_ids_str)
+    
+    # POST - Process sharing
+    emails_str = request.form.get('emails', '').strip()
+    
+    if not emails_str:
+        flash('Please enter at least one email address', 'error')
+        return render_template('recipes_share.html', recipes=recipes, recipe_ids=recipe_ids_str), 400
+    
+    # Parse emails (comma or newline separated)
+    emails = [e.strip().lower() for e in emails_str.replace('\n', ',').split(',') if e.strip()]
+    
+    if not emails:
+        flash('Please enter at least one valid email address', 'error')
+        return render_template('recipes_share.html', recipes=recipes, recipe_ids=recipe_ids_str), 400
+    
+    # Validate email format
+    import re
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    valid_emails = []
+    for email in emails:
+        if re.match(email_pattern, email):
+            if email != current_user.email:
+                valid_emails.append(email)
+            else:
+                flash(f'Cannot share with yourself ({email})', 'warning')
+        else:
+            flash(f'Invalid email address: {email}', 'warning')
+    
+    if not valid_emails:
+        flash('No valid email addresses to share with', 'error')
+        return render_template('recipes_share.html', recipes=recipes, recipe_ids=recipe_ids_str), 400
+    
+    # Process each email
+    friend_requests_created = 0
+    pending_shares_created = 0
+    email_shares_created = 0
+    direct_shares_created = 0
+    
+    for email in valid_emails:
+        recipient = db.session.query(User).filter(User.email == email).first()
+        
+        if recipient:
+            # User exists - check if friend
+            if current_user.is_friends_with(recipient.id):
+                # Already friends - share directly
+                for recipe in recipes:
+                    # Check if already shared
+                    existing_share = db.session.query(RecipeShare).filter(
+                        RecipeShare.recipe_id == recipe.id,
+                        RecipeShare.shared_by_user_id == current_user.id,
+                        RecipeShare.shared_with_user_id == recipient.id
+                    ).first()
+                    
+                    if not existing_share:
+                        share = RecipeShare(
+                            recipe_id=recipe.id,
+                            shared_by_user_id=current_user.id,
+                            shared_with_user_id=recipient.id
+                        )
+                        db.session.add(share)
+                        direct_shares_created += 1
+                        
+                        # Create notification
+                        notification = Notification(
+                            user_id=recipient.id,
+                            notification_type='recipe_shared',
+                            related_user_id=current_user.id,
+                            recipe_id=recipe.id,
+                            message=f"{current_user.display_name or current_user.username} shared a recipe with you: {recipe.name}"
+                        )
+                        db.session.add(notification)
+            else:
+                # Not friends - create friend request and pending shares
+                # Check if friend request already exists
+                existing_request = db.session.query(FriendRequest).filter(
+                    ((FriendRequest.sender_id == current_user.id) & (FriendRequest.recipient_id == recipient.id)) |
+                    ((FriendRequest.sender_id == recipient.id) & (FriendRequest.recipient_id == current_user.id))
+                ).filter(FriendRequest.status == 'pending').first()
+                
+                if not existing_request:
+                    friend_request = FriendRequest(
+                        sender_id=current_user.id,
+                        recipient_id=recipient.id,
+                        status='pending'
+                    )
+                    db.session.add(friend_request)
+                    db.session.flush()
+                    friend_requests_created += 1
+                else:
+                    friend_request = existing_request
+                
+                # Create pending shares for all recipes
+                for recipe in recipes:
+                    # Check if pending share already exists
+                    existing_pending = db.session.query(PendingRecipeShare).filter(
+                        PendingRecipeShare.recipe_id == recipe.id,
+                        PendingRecipeShare.shared_by_user_id == current_user.id,
+                        PendingRecipeShare.shared_with_user_id == recipient.id,
+                        PendingRecipeShare.status == 'pending'
+                    ).first()
+                    
+                    if not existing_pending:
+                        pending_share = PendingRecipeShare(
+                            recipe_id=recipe.id,
+                            shared_by_user_id=current_user.id,
+                            shared_with_user_id=recipient.id,
+                            friend_request_id=friend_request.id,
+                            status='pending'
+                        )
+                        db.session.add(pending_share)
+                        pending_shares_created += 1
+                
+                # Create notification for friend request
+                if not existing_request:
+                    notification = Notification(
+                        user_id=recipient.id,
+                        notification_type='friend_request',
+                        related_user_id=current_user.id,
+                        message=f"{current_user.display_name or current_user.username} sent you a friend request"
+                    )
+                    db.session.add(notification)
+        else:
+            # User doesn't exist - create email share with token
+            for recipe in recipes:
+                token = secrets.token_urlsafe(32)
+                pending_share = PendingRecipeShare(
+                    recipe_id=recipe.id,
+                    shared_by_user_id=current_user.id,
+                    recipient_email=email,
+                    token=token,
+                    status='pending'
+                )
+                db.session.add(pending_share)
+                email_shares_created += 1
+                
+                # Send email with protected link
+                try:
+                    from email_service import email_service
+                    recipe_url = url_for('recipe_view_token', recipe_id=recipe.id, token=token, _external=True)
+                    custom_message = f"I'd like to share this recipe with you. Please create an account to view it.\n\nView recipe: {recipe_url}"
+                    success, error_msg = email_service.send_recipe(
+                        recipe=recipe,
+                        recipient_email=email,
+                        recipient_name='',
+                        custom_message=custom_message
+                    )
+                    if not success:
+                        app.logger.error(f"Error sending email share: {error_msg}")
+                except Exception as e:
+                    app.logger.error(f"Error sending email share: {e}")
+                    # Continue even if email fails
+    
+    db.session.commit()
+    
+    # Create success message
+    messages = []
+    if direct_shares_created > 0:
+        messages.append(f"Shared {direct_shares_created} recipe(s) directly")
+    if friend_requests_created > 0:
+        messages.append(f"Sent {friend_requests_created} friend request(s). Recipe(s) will be shared when accepted.")
+    if pending_shares_created > 0:
+        messages.append(f"Created {pending_shares_created} pending share(s)")
+    if email_shares_created > 0:
+        messages.append(f"Sent {email_shares_created} email share(s)")
+    
+    if messages:
+        flash(' | '.join(messages), 'success')
+    else:
+        flash('No new shares created', 'info')
+    
+    return redirect(url_for('recipe_list'))
+
+
+@app.route('/recipe/<int:recipe_id>/shares', methods=['GET'])
+@login_required
+def recipe_view_shares(recipe_id):
+    """View who a recipe is shared with."""
+    from db_models import Recipe, RecipeShare, User
+    
+    recipe = storage.get_recipe(recipe_id, current_user.id)
+    
+    if not recipe:
+        flash('Recipe not found', 'error')
+        return redirect(url_for('recipe_list'))
+    
+    # Check if user owns the recipe
+    if recipe.user_id != current_user.id:
+        flash('You can only view shares for recipes you own', 'error')
+        return redirect(url_for('recipe_view', recipe_id=recipe_id))
+    
+    # Get shares
+    shares = db.session.query(RecipeShare).filter(
+        RecipeShare.recipe_id == recipe_id,
+        RecipeShare.shared_by_user_id == current_user.id
+    ).all()
+    
+    shares_with_users = []
+    for share in shares:
+        friend = db.session.query(User).filter(User.id == share.shared_with_user_id).first()
+        if friend:
+            shares_with_users.append({
+                'share': share,
+                'friend': friend
+            })
+    
+    return render_template(
+        'recipe_shares.html',
+        recipe=recipe,
+        shares=shares_with_users
+    )
+
+
+@app.route('/friends/<int:friend_id>/share-all', methods=['POST'])
+@login_required
+def friends_share_all(friend_id):
+    """Share all public recipes with a friend."""
+    from db_models import Recipe, RecipeShare, Notification, Friendship
+    
+    # Verify friendship
+    if not current_user.is_friends_with(friend_id):
+        flash('You can only share recipes with friends', 'error')
+        return redirect(url_for('friends_list'))
+    
+    # Get all user's public recipes
+    recipes = db.session.query(Recipe).filter(
+        Recipe.user_id == current_user.id,
+        Recipe.visibility == 'public',
+        Recipe.deleted_at.is_(None)  # Only non-deleted recipes
+    ).all()
+    
+    if not recipes:
+        flash('You have no public recipes to share', 'info')
+        return redirect(url_for('friends_list'))
+    
+    # Get already shared recipes
+    existing_shares = db.session.query(RecipeShare).filter(
+        RecipeShare.shared_by_user_id == current_user.id,
+        RecipeShare.shared_with_user_id == friend_id
+    ).all()
+    already_shared_recipe_ids = {share.recipe_id for share in existing_shares}
+    
+    # Create shares for recipes not already shared
+    new_shares = []
+    for recipe in recipes:
+        if recipe.id not in already_shared_recipe_ids:
+            share = RecipeShare(
+                recipe_id=recipe.id,
+                shared_by_user_id=current_user.id,
+                shared_with_user_id=friend_id
+            )
+            db.session.add(share)
+            new_shares.append(share)
+    
+    # Create notification
+    if new_shares:
+        from db_models import User
+        friend = db.session.query(User).filter(User.id == friend_id).first()
+        notification = Notification(
+            user_id=friend_id,
+            notification_type='recipe_shared',
+            related_user_id=current_user.id,
+            message=f"{current_user.display_name or current_user.username} shared {len(new_shares)} recipe(s) with you"
+        )
+        db.session.add(notification)
+    
+    db.session.commit()
+    
+    app.logger.info(f"Shared {len(new_shares)} recipes with friend {friend_id} by user {current_user.id}")
+    flash(f'Shared {len(new_shares)} recipe(s) with friend!', 'success')
+    return redirect(url_for('friends_list'))
+
+
+@app.route('/recipe/<int:recipe_id>/unshare-self', methods=['POST'])
+@login_required
+def recipe_unshare_self(recipe_id):
+    """Remove a shared recipe from own view (recipient action)."""
+    from db_models import RecipeShare
+    
+    # Find share where current user is the recipient
+    share = db.session.query(RecipeShare).filter(
+        RecipeShare.recipe_id == recipe_id,
+        RecipeShare.shared_with_user_id == current_user.id
+    ).first()
+    
+    if not share:
+        flash('Shared recipe not found', 'error')
+        return redirect(url_for('recipe_list'))
+    
+    # Delete the share (removes from recipient's view)
+    db.session.delete(share)
+    db.session.commit()
+    
+    app.logger.info(f"User {current_user.id} removed shared recipe {recipe_id} from their view")
+    flash('Recipe removed from your recipes', 'info')
+    return redirect(url_for('recipe_list'))
+
+
+# ============================================================================
 # Tag Management
 # ============================================================================
 
@@ -1132,11 +2252,26 @@ def tag_manager():
 # Helper Functions
 # ============================================================================
 
-def _validate_recipe_data(recipe_data):
+def _validate_recipe_data(recipe_data, visibility=None):
     """
-    Validate recipe data and return (is_valid, errors).
+    Validate recipe data and return (is_valid, errors, warnings).
+    
+    Args:
+        recipe_data: Dictionary with recipe information
+        visibility: Recipe visibility ('public', 'private', 'incomplete'). If None, extracted from recipe_data.
+    
+    Returns:
+        Tuple of (is_valid, errors, warnings)
+        - is_valid: Boolean indicating if recipe can be saved
+        - errors: List of error messages (blocking)
+        - warnings: List of warning messages (non-blocking)
     """
     errors = []
+    warnings = []
+    
+    # Extract visibility if not provided
+    if visibility is None:
+        visibility = recipe_data.get('visibility', 'incomplete')
     
     # Name validation - must be at least 3 characters after removing whitespace
     name = recipe_data.get('name', '').strip()
@@ -1150,20 +2285,29 @@ def _validate_recipe_data(recipe_data):
     if not instructions:
         errors.append("Please provide recipe instructions")
     
-    # Source validation - name is REQUIRED, plus author OR URL
+    # Source validation - conditional based on visibility
     source = recipe_data.get('source', {})
     has_name = source.get('name', '').strip()
     has_author = source.get('author', '').strip()
     has_url = source.get('url', '').strip()
     has_issue = source.get('issue', '').strip()
     
-    # Source name is always required
-    if not has_name:
-        errors.append("Source name is required (e.g., cookbook title, website name, or publication)")
-    
-    # Must have either author OR URL (or both)
-    if not (has_author or has_url):
-        errors.append("Must provide either recipe author or source URL (or both)")
+    if visibility == 'public':
+        # For public recipes: source information is REQUIRED (errors)
+        if not has_name:
+            errors.append("Source name is required for public recipes (e.g., cookbook title, website name, or publication)")
+        
+        # Must have either author OR URL (or both)
+        if not (has_author or has_url):
+            errors.append("Must provide either recipe author or source URL (or both) for public recipes")
+    else:
+        # For private/incomplete recipes: source information is optional (warnings)
+        if not has_name and not (has_author or has_url):
+            warnings.append("Source information is recommended. If you make this recipe public later, you'll need to provide: (1) Source name, and (2) either Author or URL.")
+        elif not has_name:
+            warnings.append("Source name is recommended. If you make this recipe public later, a source name will be required.")
+        elif not (has_author or has_url):
+            warnings.append("Either recipe author or source URL is recommended. If you make this recipe public later, at least one will be required.")
     
     # Validate source issue field format if provided
     if has_issue:
@@ -1173,7 +2317,7 @@ def _validate_recipe_data(recipe_data):
             # This is a warning, not an error - some sources might have different formats
             logger.info(f"Source issue format might be incorrect: '{has_issue}'")
     
-    # URL validation - must be a valid URL if provided
+    # URL validation - must be a valid URL if provided (applies to all recipes)
     if has_url:
         if not (has_url.startswith('http://') or has_url.startswith('https://')):
             errors.append("Please enter a valid URL (must start with http:// or https://)")
@@ -1203,7 +2347,7 @@ def _validate_recipe_data(recipe_data):
         if amount and not _is_valid_amount(amount):
             errors.append(f"Ingredient {i}: Please enter a valid numerical amount (e.g., 1, 1.5, 1/2, 1 1/2) or range (e.g., 1-2, 1/2-1)")
     
-    return len(errors) == 0, errors
+    return len(errors) == 0, errors, warnings
 
 
 def _is_valid_amount(amount: str) -> bool:

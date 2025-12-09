@@ -1,0 +1,81 @@
+{% extends "base_mysql.html" %}
+
+{% block title %}Pending Recipe Shares - Recipe Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-header header-dark">
+                <h3 class="mb-0"><i class="bi bi-clock-history"></i> Pending Recipe Shares</h3>
+            </div>
+            <div class="card-body">
+                {% if not shares_with_details %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> You don't have any pending recipe shares.
+                </div>
+                {% else %}
+                <p class="text-muted mb-4">
+                    You have {{ shares_with_details|length }} pending recipe share(s). 
+                    Review each recipe and choose to accept or reject the share.
+                </p>
+                
+                <div class="list-group">
+                    {% for item in shares_with_details %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="flex-grow-1">
+                                <h5 class="mb-1">
+                                    <a href="{{ url_for('recipe_view', recipe_id=item.recipe.id) }}" 
+                                       target="_blank" class="text-decoration-none">
+                                        {{ item.recipe.name }}
+                                        <i class="bi bi-box-arrow-up-right small"></i>
+                                    </a>
+                                </h5>
+                                <p class="text-muted mb-1">
+                                    <i class="bi bi-person"></i> Shared by: 
+                                    <strong>{{ item.sender.display_name or item.sender.username }}</strong>
+                                </p>
+                                {% if item.recipe.description %}
+                                <p class="text-muted small mb-2">{{ item.recipe.description[:200] }}{% if item.recipe.description|length > 200 %}...{% endif %}</p>
+                                {% endif %}
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar"></i> Received: {{ item.pending_share.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <form method="POST" action="{{ url_for('pending_share_accept', pending_share_id=item.pending_share.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-success">
+                                    <i class="bi bi-check-circle"></i> Accept
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('pending_share_reject', pending_share_id=item.pending_share.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                        onclick="return confirm('Are you sure you want to reject this recipe share?')">
+                                    <i class="bi bi-x-circle"></i> Reject
+                                </button>
+                            </form>
+                            <a href="{{ url_for('recipe_view', recipe_id=item.recipe.id) }}" 
+                               class="btn btn-sm btn-outline-primary" target="_blank">
+                                <i class="bi bi-eye"></i> View Recipe
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('recipe_list') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Recipes
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

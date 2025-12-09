@@ -1,0 +1,44 @@
+{% extends "base_mysql.html" %}
+
+{% block title %}Recipe Shares - Recipe Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-header header-dark">
+                <h3 class="mb-0"><i class="bi bi-share"></i> Who I've Shared "{{ recipe.name }}" With</h3>
+            </div>
+            <div class="card-body">
+                {% if shares %}
+                <div class="list-group">
+                    {% for item in shares %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ item.friend.display_name or item.friend.username }}</h6>
+                                <small class="text-muted">Shared on {{ item.share.created_at.strftime('%B %d, %Y') }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> This recipe hasn't been shared with any friends yet.
+                </div>
+                {% endif %}
+                
+                <div class="mt-3">
+                    <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Recipe
+                    </a>
+                    <a href="{{ url_for('recipe_share', recipe_id=recipe.id) }}" class="btn btn-primary">
+                        <i class="bi bi-share"></i> Share with More Friends
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

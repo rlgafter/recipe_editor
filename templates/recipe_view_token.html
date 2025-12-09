@@ -1,0 +1,81 @@
+{% extends "base_mysql.html" %}
+
+{% block title %}{{ recipe.name }} - Recipe Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        {% if not current_user.is_authenticated %}
+        <div class="alert alert-warning">
+            <h5><i class="bi bi-exclamation-triangle"></i> Account Required</h5>
+            <p>You need to create an account to view this recipe. The recipe has been shared with you via email.</p>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('register') }}" class="btn btn-primary">
+                    <i class="bi bi-person-plus"></i> Create Account
+                </a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="card shadow-sm">
+            <div class="card-header header-dark">
+                <h2 class="mb-0">{{ recipe.name }}</h2>
+            </div>
+            <div class="card-body">
+                {% if recipe.description %}
+                <p class="lead">{{ recipe.description }}</p>
+                {% endif %}
+                
+                {% if recipe.source_name %}
+                <div class="mb-3">
+                    <strong>Source:</strong> {{ recipe.source_name }}
+                    {% if recipe.author %}
+                    <span class="text-muted">by {{ recipe.author }}</span>
+                    {% endif %}
+                    {% if recipe.url %}
+                    <a href="{{ recipe.url }}" target="_blank" class="ms-2">
+                        <i class="bi bi-box-arrow-up-right"></i> View Source
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                {% if recipe.ingredients %}
+                <div class="mb-4">
+                    <h4>Ingredients</h4>
+                    <pre class="bg-light p-3 rounded">{{ recipe.ingredients }}</pre>
+                </div>
+                {% endif %}
+                
+                {% if recipe.instructions %}
+                <div class="mb-4">
+                    <h4>Instructions</h4>
+                    <pre class="bg-light p-3 rounded">{{ recipe.instructions }}</pre>
+                </div>
+                {% endif %}
+                
+                {% if recipe.notes %}
+                <div class="mb-4">
+                    <h4>Notes</h4>
+                    <pre class="bg-light p-3 rounded">{{ recipe.notes }}</pre>
+                </div>
+                {% endif %}
+                
+                {% if not current_user.is_authenticated %}
+                <div class="alert alert-info mt-4">
+                    <p class="mb-0">
+                        <strong>Want to save this recipe?</strong> 
+                        <a href="{{ url_for('register') }}" class="alert-link">Create an account</a> to add this recipe to your collection.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

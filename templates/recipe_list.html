@@ -3,6 +3,19 @@
 {% block title %}Recipes - Recipe Editor{% endblock %}
 
 {% block content %}
+{% if pending_shares_list and pending_shares_list|length > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning">
+            <h5><i class="bi bi-clock-history"></i> You have {{ pending_shares_list|length }} pending recipe share(s)</h5>
+            <p class="mb-2">Review and accept or reject shared recipes.</p>
+            <a href="{{ url_for('pending_shares') }}" class="btn btn-warning">
+                <i class="bi bi-arrow-right"></i> View Pending Shares
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
 <div class="row">
     <div class="col-lg-3 mb-4">
         <!-- Tag Filter Sidebar -->
@@ -113,12 +126,21 @@
             <div class="row row-cols-1 row-cols-md-2 g-4">
                 {% for recipe in recipes %}
                     <div class="col">
-                        <div class="card h-100 recipe-card">
+                        {% set is_shared = recipe.id in shared_recipe_info and recipe.user_id != current_user_id %}
+                        {% set is_own = recipe.user_id == current_user_id %}
+                        <div class="card h-100 recipe-card {% if is_shared %}border-info bg-light{% elif is_own %}border-primary{% endif %}">
                             <div class="card-body">
                                 <h5 class="card-title">
                                     <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}" class="text-decoration-none">
                                         {{ recipe.name }}
                                     </a>
+                                    {% if is_shared %}
+                                    <span class="badge bg-info ms-2">
+                                        <i class="bi bi-share"></i> Shared by {{ shared_recipe_info[recipe.id].shared_by_user.display_name or shared_recipe_info[recipe.id].shared_by_user.username }}
+                                    </span>
+                                    {% elif is_own %}
+                                    <span class="badge bg-primary ms-2">My Recipe</span>
+                                    {% endif %}
                                 </h5>
                                 
                                 {% if recipe.source and recipe.source.source_name %}
@@ -166,18 +188,25 @@
                                        class="btn btn-outline-primary">
                                         <i class="bi bi-eye"></i> View
                                     </a>
-                                    {% if current_user.is_authenticated and current_user.can_edit_recipe(recipe) %}
-                                    <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" 
-                                       class="btn btn-outline-secondary">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    {% endif %}
-                                    {% if current_user.is_authenticated and current_user.can_delete_recipe(recipe) %}
-                                    <button type="button" class="btn btn-outline-danger" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deleteModal{{ recipe.id }}">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
+                                    {% if current_user.is_authenticated %}
+                                        {% if current_user.can_share_recipe(recipe) %}
+                                        <a href="{{ url_for('recipe_share', recipe_id=recipe.id) }}" 
+                                           class="btn btn-outline-info">
+                                            <i class="bi bi-share"></i> Share
+                                        </a>
+                                        {% elif current_user.can_edit_recipe(recipe) %}
+                                        <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" 
+                                           class="btn btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        {% endif %}
+                                        {% if current_user.can_delete_recipe(recipe) %}
+                                        <button type="button" class="btn btn-outline-danger" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteModal{{ recipe.id }}">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             </div>

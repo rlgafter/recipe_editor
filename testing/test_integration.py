@@ -128,7 +128,13 @@ class TestUserWorkflowIntegration:
         # Step 2: Logout and verify recipe is not visible to unauthenticated users
         auth_client['logout']()
         
-        list_response = auth_client['client'].get('/')
+        # Unauthenticated users should be redirected from /recipes
+        list_response = auth_client['client'].get('/recipes')
+        assert list_response.status_code in [302, 200]  # Redirect or home page
+        
+        # Should show home page, not recipes
+        if list_response.status_code == 302:
+            list_response = auth_client['client'].get('/')
         assert list_response.status_code == 200
         
         if list_response.status_code == 200:
@@ -139,7 +145,7 @@ class TestUserWorkflowIntegration:
         # Step 3: Login as admin and verify admin can see the recipe
         auth_client['login']('admin', 'admin123')
         
-        admin_list_response = auth_client['client'].get('/')
+        admin_list_response = auth_client['client'].get('/recipes')
         assert admin_list_response.status_code == 200
         
         if admin_list_response.status_code == 200:
@@ -246,7 +252,7 @@ class TestDataConsistencyIntegration:
             assert 'consistency test recipe' in response_text
         
         # Step 3: Verify recipe appears in main recipe list
-        main_list_response = auth_client['client'].get('/')
+        main_list_response = auth_client['client'].get('/recipes')
         assert main_list_response.status_code == 200
         
         if main_list_response.status_code == 200:

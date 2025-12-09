@@ -36,6 +36,19 @@ The test suite is organized into the following categories:
 - **Data Consistency**: Recipe data consistency across operations
 - **Performance**: Response time and concurrent operations
 
+### 6. Source Validation by Visibility Tests (`test_source_validation_visibility.py`)
+- **Public Recipe Requirements**: Source information required (errors if missing)
+- **Private/Incomplete Recipe Warnings**: Source information optional (warnings if missing)
+- **Warning vs Error Handling**: Warnings don't block saving, errors do
+- **Edge Cases**: Partial source information, invalid URLs, visibility changes
+- **Edit Workflow**: Changing visibility requires source validation
+
+### 7. Public Recipe Visibility Tests (`test_public_recipe_visibility.py`)
+- **Visibility Restrictions**: Public recipes not automatically visible to all users
+- **Sharing Requirements**: Public recipes must be explicitly shared
+- **Own Recipe Visibility**: Users can always see their own recipes
+- **Search and Filter**: Shared recipes appear in search, unshared don't
+
 ## Test Configuration
 
 ### Backend Support
@@ -81,6 +94,12 @@ pytest testing/test_validation.py -v
 
 # Integration tests only
 pytest testing/test_integration.py -v
+
+# Source validation tests
+pytest testing/test_source_validation_visibility.py -v
+
+# Public recipe visibility tests
+pytest testing/test_public_recipe_visibility.py -v
 ```
 
 ### Run Tests for Specific Backend
@@ -140,6 +159,20 @@ pytest testing/ -m "not slow" -v
 - ✅ Data consistency across operations
 - ✅ Performance testing
 - ✅ Cross-backend compatibility
+
+### Source Validation by Visibility
+- ✅ Public recipes require source information (errors)
+- ✅ Private/incomplete recipes show warnings (non-blocking)
+- ✅ Source validation based on visibility level
+- ✅ Warning vs error distinction
+- ✅ Edit workflow validation
+- ✅ Edge case handling
+
+### Public Recipe Visibility
+- ✅ Public recipes not automatically visible
+- ✅ Sharing required for visibility
+- ✅ Own recipes always visible
+- ✅ Search and filter integration
 
 ## Test Data
 

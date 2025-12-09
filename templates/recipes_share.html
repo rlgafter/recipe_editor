@@ -1,0 +1,73 @@
+{% extends "base_mysql.html" %}
+
+{% block title %}Share Recipes - Recipe Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0"><i class="bi bi-share"></i> Sharing {{ recipes|length }} Recipe(s)</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for recipe in recipes %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5>{{ recipe.name }}</h5>
+                                {% if recipe.description %}
+                                <p class="text-muted small">{{ recipe.description[:100] }}{% if recipe.description|length > 100 %}...{% endif %}</p>
+                                {% endif %}
+                                <a href="{{ url_for('recipe_view', recipe_id=recipe.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header header-dark">
+                <h3 class="mb-0"><i class="bi bi-envelope"></i> Enter Email Address(es)</h3>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h5><i class="bi bi-info-circle"></i> How it works:</h5>
+                    <ul class="mb-0">
+                        <li>If the email belongs to an existing user who is your friend, recipes will be shared immediately.</li>
+                        <li>If the email belongs to an existing user who is not your friend, a friend request will be sent first. Recipes will be shared automatically once the friend request is accepted.</li>
+                        <li>If the email does not belong to any user, you'll be asked if you want to send the recipe via email. The recipient will need to create an account to view it.</li>
+                    </ul>
+                </div>
+                
+                <form method="POST" action="{{ url_for('recipes_share') }}">
+                    <input type="hidden" name="recipe_ids" value="{{ recipe_ids }}">
+                    
+                    <div class="mb-3">
+                        <label for="emails" class="form-label">Email Address(es)</label>
+                        <textarea class="form-control" id="emails" name="emails" rows="3" 
+                                  placeholder="friend1@example.com&#10;friend2@example.com&#10;friend3@example.com" 
+                                  required></textarea>
+                        <small class="form-text text-muted">Enter one or more email addresses, separated by commas or new lines.</small>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('recipes_share_select') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> Share Recipes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
