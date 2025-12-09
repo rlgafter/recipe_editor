@@ -316,10 +316,13 @@ def auth_profile():
             
             if not current_password:
                 flash('Current password is required to change email', 'error')
-            elif not new_email or '@' not in new_email:
-                flash('Valid email address is required', 'error')
             else:
-                success, message = request_email_change(current_user, current_password, new_email)
+                # Validate email format
+                from auth import is_valid_email
+                if not is_valid_email(new_email):
+                    flash('Please enter a valid email address', 'error')
+                else:
+                    success, message = request_email_change(current_user, current_password, new_email)
                 if success:
                     flash(message, 'success')
                 else:
@@ -408,6 +411,12 @@ def auth_forgot_username():
         
         if not email:
             flash('Please enter your email address', 'error')
+            return render_template('forgot_username.html')
+        
+        # Validate email format
+        from auth import is_valid_email
+        if not is_valid_email(email):
+            flash('Please enter a valid email address', 'error')
             return render_template('forgot_username.html')
         
         # Find user by email
@@ -1186,6 +1195,12 @@ def recipe_email(recipe_id):
         flash('Recipient email is required', 'error')
         return render_template('recipe_email.html', recipe=recipe), 400
     
+    # Validate email format
+    from auth import is_valid_email
+    if not is_valid_email(recipient_email):
+        flash('Please enter a valid email address', 'error')
+        return render_template('recipe_email.html', recipe=recipe), 400
+    
     try:
         # Pass Recipe object directly to email service
         success, error_msg = email_service.send_recipe(
@@ -1256,9 +1271,8 @@ def friends_find():
         return render_template('friends_find.html', recipe=recipe, recipe_id=recipe_id), 400
     
     # Validate email format
-    import re
-    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    if not re.match(email_pattern, email):
+    from auth import is_valid_email
+    if not is_valid_email(email):
         flash('Please enter a valid email address', 'error')
         return render_template('friends_find.html', recipe=recipe, recipe_id=recipe_id), 400
     
@@ -1950,11 +1964,10 @@ def recipes_share():
         return render_template('recipes_share.html', recipes=recipes, recipe_ids=recipe_ids_str), 400
     
     # Validate email format
-    import re
-    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    from auth import is_valid_email
     valid_emails = []
     for email in emails:
-        if re.match(email_pattern, email):
+        if is_valid_email(email):
             if email != current_user.email:
                 valid_emails.append(email)
             else:

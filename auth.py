@@ -2,6 +2,7 @@
 User Authentication System using Flask-Login and bcrypt.
 """
 import logging
+import re
 from functools import wraps
 from datetime import datetime
 from typing import Optional
@@ -13,6 +14,27 @@ import bcrypt
 from db_models import db, User, UserPreference, UserStats
 
 logger = logging.getLogger(__name__)
+
+# Email validation pattern
+EMAIL_PATTERN = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+
+
+def is_valid_email(email: str) -> bool:
+    """
+    Validate email address format.
+    
+    Args:
+        email: Email address to validate
+        
+    Returns:
+        True if email format is valid, False otherwise
+    """
+    if not email or not isinstance(email, str):
+        return False
+    email = email.strip()
+    if not email:
+        return False
+    return bool(re.match(EMAIL_PATTERN, email))
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -108,6 +130,10 @@ def create_user(username: str, email: str, password: str, display_name: str = No
     if len(username) < 3:
         return False, None, "Username must be at least 3 characters"
     
+    # Validate email format
+    if not is_valid_email(email):
+        return False, None, "Please enter a valid email address"
+    
     # Check if username exists
     existing_user = db.session.query(User).filter(User.username == username).first()
     if existing_user:
@@ -202,8 +228,8 @@ def request_email_change(user: User, current_password: str, new_email: str) -> t
     
     # Validate new email
     new_email = new_email.lower().strip()
-    if not new_email or '@' not in new_email:
-        return False, "Valid email address is required"
+    if not is_valid_email(new_email):
+        return False, "Please enter a valid email address"
     
     # Check if email is same as current
     if new_email == user.email:

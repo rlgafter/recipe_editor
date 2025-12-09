@@ -1104,7 +1104,8 @@ This email was sent from Recipe Editor
                     parts.append(ing['unit'])
                 if ing.get('description'):
                     parts.append(ing['description'])
-                text += f"• {' '.join(parts)}\n"
+                ingredient_text = ' '.join(parts) if parts else str(ing)
+                text += f"• {ingredient_text}\n"
             else:
                 # RecipeIngredient object or other format
                 text += f"• {str(ing)}\n"

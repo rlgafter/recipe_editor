@@ -279,8 +279,10 @@ def register_admin_routes(app):
         if not username or len(username) < 3 or len(username) > 50:
             errors.append('Username must be 3-50 characters long')
         
-        if not email or '@' not in email:
-            errors.append('Valid email address is required')
+        # Validate email format
+        from auth import is_valid_email
+        if not is_valid_email(email):
+            errors.append('Please enter a valid email address')
         
         # Check for existing username
         if User.query.filter_by(username=username).first():
