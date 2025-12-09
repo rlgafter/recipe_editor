@@ -25,7 +25,7 @@ except Exception as e:
 import config
 from flask import Flask
 from db_models import db, User
-from auth import hash_password
+from auth import hash_password, is_valid_email
 
 def update_admin_user():
     """Update admin user email and password."""
@@ -44,8 +44,14 @@ def update_admin_user():
                 return False
             
             # Update email
-            new_email = 'rlgafter@gmail'
+            new_email = 'rlgafter@gmail.com'
             old_email = admin_user.email
+            
+            # Validate email format
+            if not is_valid_email(new_email):
+                print(f"✗ Invalid email format: {new_email}")
+                return False
+            
             admin_user.email = new_email
             
             # Update password
