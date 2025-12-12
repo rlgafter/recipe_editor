@@ -122,6 +122,45 @@ main {
     font-weight: 600;
 }
 
+/* Make navbar collapse use column layout for search bar below */
+#navbarNav {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Right-align navigation links horizontally without wrapping */
+.navbar-nav-spread {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    width: 100% !important;
+    margin: 0 !important;
+    align-items: center;
+}
+
+/* Ensure nav items don't shrink too much */
+.navbar-nav-spread .nav-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+/* Reduce padding on nav links to fit more on 800px screens */
+@media (min-width: 800px) and (max-width: 991px) {
+    .navbar-nav-spread .nav-link {
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.9rem;
+    }
+}
+
+/* On larger screens, keep right-aligned with spacing */
+@media (min-width: 992px) {
+    .navbar-nav-spread {
+        justify-content: flex-end !important;
+        gap: 0.5rem;
+    }
+}
+
 /* Buttons */
 .btn {
     font-family: var(--font-body);
